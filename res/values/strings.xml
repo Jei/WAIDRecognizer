@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">WAID Recognizer</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="recognizer_service_name">WAID Recognizer Service</string>
+    <string name="recognizer_service_loading">Recognizer service is starting</string>
+    <string name="recognizer_service_stopped">Recognizer service has stopped</string>
+    <string name="recognizer_service_loaded">Bound to Recognizer</string>
+
+</resources>
