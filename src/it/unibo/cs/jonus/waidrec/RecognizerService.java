@@ -7,12 +7,13 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.json.JSONException;
+
 import weka.core.Attribute;
 import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.classifiers.trees.RandomForest;
-
 import android.app.AlertDialog;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -99,6 +100,8 @@ public class RecognizerService extends Service {
 			MagnitudeListener.READING_DELAY_NORMAL);
 
 	private Handler classificationHandler;
+	
+	private HistoryManager historyManager;
 
 	// Runnable for vehicle classification
 	private Runnable classificationRunnable = new Runnable() {
@@ -147,9 +150,24 @@ public class RecognizerService extends Service {
 			accelListener.clearMagnitudes();
 
 			String classification = isTestingSet.instance(0).stringValue(8);
+			
+			Long currentTime = System.currentTimeMillis();
 
 			// send evaluation to content provider
-			sendEvaluation(classification, System.currentTimeMillis());
+			sendEvaluation(classification, currentTime);
+			
+			// Write evaluation to history
+			HistoryItem newItem = new HistoryItem();
+			newItem.setTimestamp(currentTime);
+			newItem.setCategory(classification);
+			newItem.setAccelFeatures(accelFeatures);
+			newItem.setGyroFeatures(gyroFeatures);
+			try {
+				historyManager.writeHistoryItem(newItem);
+			} catch (JSONException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 
 			// Write instance to temp file
 			try {
@@ -174,6 +192,8 @@ public class RecognizerService extends Service {
 	@Override
 	public void onCreate() {
 		modelManager = new ModelManager();
+		
+		historyManager = new HistoryManager(getFilesDir());
 
 		classifier = null;
 
@@ -254,6 +274,13 @@ public class RecognizerService extends Service {
 
 	@Override
 	public void onDestroy() {
+		// Write the history to file
+		try {
+			historyManager.writeSession();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		// Tell the user we stopped.
 		Toast.makeText(this, R.string.recognizer_service_stopped,
@@ -286,6 +313,14 @@ public class RecognizerService extends Service {
 			this.stopSelf();
 		}
 		if (firstStart) {
+			// start history session
+			try {
+				historyManager.newSession();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
 			// launch the execution of the delayed classification task
 			samplingRate = bundle.getInt("sampling");
 			classificationHandler = new Handler();
