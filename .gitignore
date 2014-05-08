@@ -4,3 +4,4 @@ bin/
 .settings/
 project.properties
 proguard-project.txt
+lint.xml
