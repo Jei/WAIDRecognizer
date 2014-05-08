@@ -17,7 +17,7 @@ public class EvaluationsProvider extends ContentProvider {
 	private DatabaseOpenHelper database;
 	private static final int EVALUATIONS = 1;
 	private static final int LAST_EVALUATION = 2;
-	private static final String AUTHORITY = "it.unibo.studio.waid.evaluationsprovider";
+	private static final String AUTHORITY = "it.unibo.cs.jonus.waidrec.evaluationsprovider";
 	private static final String BASE_PATH = "evaluations";
 	public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/" + BASE_PATH);
 	

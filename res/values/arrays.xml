@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="default_classes_keys">
+        <item >walking</item>
+        <item >car</item>
+        <item >train</item>
+        <item >idle</item>
+    </string-array>
+    <string-array name="default_classes_names">
+        <item >walking</item>
+        <item >car</item>
+        <item >train</item>
+        <item >idle</item>
+    </string-array>
+    
+</resources>

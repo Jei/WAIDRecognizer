@@ -21,8 +21,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Binder;
@@ -35,17 +33,14 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Toast;
 
-public class RecognizerService extends Service implements SensorEventListener {
-	// public class ProviderService extends Service {
-
-	// private SensorEventListener mEventListenerAccelerometer;
-	// private SensorEventListener mEventListenerGyroscope;
-
+public class RecognizerService extends Service {
 	// Evaluation insertion test objects
 	TimerTask testEvaluationTask;
 	Timer testEvaluationTimer;
 
-	private int samplingRate;
+	// sampling rate is set to max until the service is bound to the activity
+	private int samplingRate = Integer.MAX_VALUE;
+	private Boolean firstStart = true;
 
 	private ModelManager modelManager;
 
@@ -75,23 +70,106 @@ public class RecognizerService extends Service implements SensorEventListener {
 		}
 	};
 
-	ArrayList<Double> arrayAccelerometer;
-	ArrayList<Double> arrayGyroscope;
-
 	long lastWindowExpire;
-	long lastSensorInput;
 
 	private Instances isTestingSet;
 	private FastVector fvWekaAttributes;
 	private Context context;
-	private Runnable runnable;
 
-	// sensorsimulator things
-	// private SensorManagerSimulator sm;
+	// Runnable for model deserialization
+	private Runnable deserializationRunnable = new Runnable() {
+
+		public void run() {
+			try {
+				classifier = (RandomForest) weka.core.SerializationHelper
+						.read(context.openFileInput("randomforest.model"));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	};
 
 	private SensorManager sm;
 
 	RandomForest classifier;
+
+	private MagnitudeListener accelListener = new MagnitudeListener(
+			MagnitudeListener.READING_DELAY_NORMAL);
+	private MagnitudeListener gyroListener = new MagnitudeListener(
+			MagnitudeListener.READING_DELAY_NORMAL);
+
+	private Handler classificationHandler;
+
+	// Runnable for vehicle classification
+	private Runnable classificationRunnable = new Runnable() {
+		@Override
+		public void run() {
+			// Generate the sets of features
+			MagnitudeFeatures accelFeatures = accelListener.getFeatures();
+			MagnitudeFeatures gyroFeatures = gyroListener.getFeatures();
+
+			// Create the instance
+			Instance inst = new Instance(9);
+
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(0),
+					accelFeatures.getAverage());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(1),
+					gyroFeatures.getAverage());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(2),
+					accelFeatures.getMaximum());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(3),
+					gyroFeatures.getMaximum());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(4),
+					accelFeatures.getMinimum());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(5),
+					gyroFeatures.getMinimum());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(6),
+					accelFeatures.getStandardDeviation());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
+					gyroFeatures.getStandardDeviation());
+			inst.setMissing((Attribute) fvWekaAttributes.elementAt(8));
+
+			// add the instance
+			isTestingSet.add(inst);
+
+			// do classification
+			double clsLabel = 0;
+			try {
+				clsLabel = classifier
+						.classifyInstance(isTestingSet.instance(0));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			isTestingSet.instance(0).setClassValue(clsLabel);
+
+			// clear readings arrays
+			gyroListener.clearMagnitudes();
+			accelListener.clearMagnitudes();
+
+			String classification = isTestingSet.instance(0).stringValue(8);
+
+			// send evaluation to content provider
+			sendEvaluation(classification, System.currentTimeMillis());
+
+			// Write instance to temp file
+			try {
+				modelManager.writeInstance(isTestingSet.firstInstance(),
+						getFilesDir());
+			} catch (IOException e) {
+				new AlertDialog.Builder(context).setTitle("Error")
+						.setMessage("Error while writing to temp Arff file")
+						.show();
+				stopSelf();
+			}
+
+			// erase testing set
+			isTestingSet.delete();
+
+			// Reset delayed runnable
+			classificationHandler.postDelayed(classificationRunnable,
+					samplingRate * 1000);
+		}
+	};
 
 	@Override
 	public void onCreate() {
@@ -112,25 +190,8 @@ public class RecognizerService extends Service implements SensorEventListener {
 
 		Log.v("ProviderService", "start");
 
-		Toast.makeText(this, R.string.recognizer_service_loading, Toast.LENGTH_SHORT)
-				.show();
-
-		// Thread for model deserialization
-		runnable = new Runnable() {
-
-			public void run() {
-				try {
-					classifier = (RandomForest) weka.core.SerializationHelper
-							.read(context.openFileInput("randomforest.model"));
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		};
-
-		// start the arrays of readings
-		arrayAccelerometer = new ArrayList<Double>();
-		arrayGyroscope = new ArrayList<Double>();
+		Toast.makeText(this, R.string.recognizer_service_loading,
+				Toast.LENGTH_SHORT).show();
 
 		// Get context
 		context = getApplicationContext();
@@ -167,7 +228,8 @@ public class RecognizerService extends Service implements SensorEventListener {
 
 		// WARNING! Custom stack size may not be considered depending on the
 		// platform
-		Thread thread = new Thread(null, runnable, "modelOpener", 204800);
+		Thread thread = new Thread(null, deserializationRunnable,
+				"modelOpener", 204800);
 		Log.v("ProviderService", "launching thread");
 		thread.start();
 		try {
@@ -181,7 +243,6 @@ public class RecognizerService extends Service implements SensorEventListener {
 		isTestingSet.setClassIndex(8);
 
 		lastWindowExpire = SystemClock.elapsedRealtime();
-		lastSensorInput = SystemClock.elapsedRealtime();
 
 		// start sensor reading
 		registerSensors();
@@ -195,8 +256,8 @@ public class RecognizerService extends Service implements SensorEventListener {
 	public void onDestroy() {
 
 		// Tell the user we stopped.
-		Toast.makeText(this, R.string.recognizer_service_stopped, Toast.LENGTH_SHORT)
-				.show();
+		Toast.makeText(this, R.string.recognizer_service_stopped,
+				Toast.LENGTH_SHORT).show();
 		Log.v("ProviderService", "stop");
 
 		// Unregister screen off event listener
@@ -204,6 +265,9 @@ public class RecognizerService extends Service implements SensorEventListener {
 
 		// Unregister sensor listeners
 		unregisterSensors();
+
+		// Stop classification Handler
+		classificationHandler.removeCallbacks(classificationRunnable);
 
 		// Evaluation insertion test cancel
 		// testEvaluationTimer.cancel();
@@ -216,21 +280,22 @@ public class RecognizerService extends Service implements SensorEventListener {
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-
-		return START_STICKY;
-	}
-
-	@Override
-	public IBinder onBind(Intent intent) {
 		// Set sampling rate
 		Bundle bundle = intent.getExtras();
 		if (bundle == null) {
 			this.stopSelf();
 		}
-		samplingRate = bundle.getInt("sampling");
+		if (firstStart) {
+			// launch the execution of the delayed classification task
+			samplingRate = bundle.getInt("sampling");
+			classificationHandler = new Handler();
+			classificationHandler.postDelayed(classificationRunnable,
+					samplingRate * 1000);
+			firstStart = false;
+		}
 
-		Toast.makeText(this, R.string.recognizer_service_loaded, Toast.LENGTH_SHORT)
-				.show();
+		Toast.makeText(this, R.string.recognizer_service_loaded,
+				Toast.LENGTH_SHORT).show();
 
 		// Reset temp file
 		try {
@@ -241,117 +306,13 @@ public class RecognizerService extends Service implements SensorEventListener {
 			stopSelf();
 		}
 
+		return START_STICKY;
+	}
+
+	@Override
+	public IBinder onBind(Intent intent) {
+
 		return mBinder;
-	}
-
-	@Override
-	public void onSensorChanged(SensorEvent event) {
-		// public void evaluateEvent(SensorEvent event) {
-		// int type = event.type;
-		int type = event.sensor.getType();
-
-		// get readings at 100 ms intervals
-		if (SystemClock.elapsedRealtime() > lastSensorInput + 100) {
-			lastSensorInput = SystemClock.elapsedRealtime();
-			double magnitude = Math.sqrt(event.values[0] * event.values[0]
-					+ event.values[1] * event.values[1] + event.values[2]
-					* event.values[2]);
-			if (type == Sensor.TYPE_GYROSCOPE) {
-				arrayGyroscope.add(magnitude);
-			} else {
-				arrayAccelerometer.add(magnitude);
-			}
-		}
-
-		// if window has expired, do classification
-		if (SystemClock.elapsedRealtime() > lastWindowExpire
-				+ (samplingRate * 1000)) { // use samplingRate SECONDS windows
-			lastWindowExpire = SystemClock.elapsedRealtime();
-
-			double suma = 0;
-			double sumg = 0;
-			double maxa = Double.MIN_VALUE;
-			double mina = Double.MAX_VALUE;
-			double maxg = Double.MIN_VALUE;
-			double ming = Double.MAX_VALUE;
-			for (int i = 0; i < arrayAccelerometer.size(); i++) {
-				suma += arrayAccelerometer.get(i);
-				if (arrayAccelerometer.get(i) > maxa)
-					maxa = arrayAccelerometer.get(i);
-				if (arrayAccelerometer.get(i) < mina)
-					mina = arrayAccelerometer.get(i);
-			}
-			for (int i = 0; i < arrayGyroscope.size(); i++) {
-				sumg += arrayGyroscope.get(i);
-				if (arrayGyroscope.get(i) > maxg)
-					maxg = arrayGyroscope.get(i);
-				if (arrayGyroscope.get(i) < ming)
-					ming = arrayGyroscope.get(i);
-			}
-			double avga = suma / arrayAccelerometer.size();
-			double avgg = sumg / arrayGyroscope.size();
-			double stda = Math.sqrt(suma - (avga * avga));
-			double stdg = Math.sqrt(sumg - (avgg * avgg));
-
-			// Toast.makeText(this, "maxa:" + maxa + " mina:" + mina + " maxg:"
-			// + maxg + " ming:" + ming + " avga:" + avga + " avgg:" + avgg +
-			// " stda:" + stda + " stdg:" + stdg, Toast.LENGTH_SHORT).show();
-
-			// Create the instance
-			Instance inst = new Instance(9);
-
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(0), avga);
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(1), avgg);
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(2), maxa);
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(3), maxg);
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(4), mina);
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(5), ming);
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(6), stda);
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(7), stdg);
-			inst.setMissing((Attribute) fvWekaAttributes.elementAt(8));
-
-			// add the instance
-			isTestingSet.add(inst);
-
-			// do classification
-			double clsLabel = 0;
-			try {
-				clsLabel = classifier
-						.classifyInstance(isTestingSet.instance(0));
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			isTestingSet.instance(0).setClassValue(clsLabel);
-
-			// clear readings arrays
-			arrayGyroscope.clear();
-			arrayAccelerometer.clear();
-
-			String classification = isTestingSet.instance(0).stringValue(8);
-
-			// send evaluation to content provider
-			sendEvaluation(classification, System.currentTimeMillis());
-
-			// Write instance to temp file
-			try {
-				modelManager.writeInstance(isTestingSet.firstInstance(),
-						getFilesDir());
-			} catch (IOException e) {
-				new AlertDialog.Builder(this).setTitle("Error")
-						.setMessage("Error while writing to temp Arff file")
-						.show();
-				stopSelf();
-			}
-
-			// erase testing set
-			isTestingSet.delete();
-		}
-
-	}
-
-	@Override
-	public void onAccuracyChanged(Sensor arg0, int arg1) {
-
 	}
 
 	public class MyBinder extends Binder {
@@ -365,8 +326,7 @@ public class RecognizerService extends Service implements SensorEventListener {
 		values.put(DatabaseOpenHelper.COLUMN_TIMESTAMP, timestamp);
 		values.put(DatabaseOpenHelper.COLUMN_CATEGORY, classification);
 
-		getContentResolver().insert(
-				EvaluationsProvider.CONTENT_URI, values);
+		getContentResolver().insert(EvaluationsProvider.CONTENT_URI, values);
 		Log.v("ProviderService", "evaluation sent");
 	}
 
@@ -406,22 +366,27 @@ public class RecognizerService extends Service implements SensorEventListener {
 			List<Sensor> ls = sm.getSensorList(Sensor.TYPE_ACCELEROMETER);
 			for (int i = 0; i < ls.size(); i++) {
 				Sensor s_i = ls.get(i);
-				sm.registerListener(this, s_i,
+				sm.registerListener(accelListener, s_i,
 						SensorManager.SENSOR_DELAY_NORMAL);
 			}
 		}
+		accelListener.startGenerating();
 		if (sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null) {
 			List<Sensor> ls = sm.getSensorList(Sensor.TYPE_GYROSCOPE);
 			for (int i = 0; i < ls.size(); i++) {
 				Sensor s_i = ls.get(i);
-				sm.registerListener(this, s_i,
+				sm.registerListener(gyroListener, s_i,
 						SensorManager.SENSOR_DELAY_NORMAL);
 			}
 		}
+		gyroListener.startGenerating();
 	}
 
 	private void unregisterSensors() {
-		sm.unregisterListener(this);
+		sm.unregisterListener(accelListener);
+		sm.unregisterListener(gyroListener);
+		accelListener.stopGenerating();
+		gyroListener.stopGenerating();
 	}
 
 }

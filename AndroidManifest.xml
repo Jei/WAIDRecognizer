@@ -3,12 +3,13 @@
     package="it.unibo.cs.jonus.waidrec"
     android:versionCode="1"
     android:versionName="1.0" >
-    
+
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <uses-sdk
-        android:minSdkVersion="10"
-        android:targetSdkVersion="10" />
+        android:minSdkVersion="11"
+        android:targetSdkVersion="19" />
 
     <application
         android:allowBackup="true"
@@ -16,7 +17,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="it.unibo.cs.jonus.waidrec.Recognizer"
+            android:name="it.unibo.cs.jonus.waidrec.RecognizerActivity"
             android:label="@string/app_name"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="stateHidden" >
@@ -26,18 +27,37 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
+
         <service
             android:name="it.unibo.cs.jonus.waidrec.RecognizerService"
             android:label="@string/recognizer_service_name" >
         </service>
-        
+
         <provider
             android:name="it.unibo.cs.jonus.waidrec.EvaluationsProvider"
             android:authorities="it.unibo.cs.jonus.waidrec.evaluationsprovider"
             android:enabled="true"
             android:exported="true" >
         </provider>
+
+        <activity
+            android:name="it.unibo.cs.jonus.waidrec.Magnitude"
+            android:label="@string/title_activity_magnitude" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="it.unibo.cs.jonus.waidrec.Recognizer" />
+        </activity>
+        <activity
+            android:name="it.unibo.cs.jonus.waidrec.TrainingActivity"
+            android:label="@string/app_name"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateHidden" >
+        </activity>
+
+        <service
+            android:name="it.unibo.cs.jonus.waidrec.TrainingService"
+            android:label="@string/recognizer_service_name" >
+        </service>
     </application>
 
 </manifest>

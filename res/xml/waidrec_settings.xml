@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+        <Preference 
+            android:defaultValue="true" 
+            android:key="first_run"/>
+        <ListPreference 
+            android:entryValues="@array/default_classes_names" 
+            android:persistent="true" 
+            android:entries="@array/default_classes_keys"/>
+    </PreferenceScreen>

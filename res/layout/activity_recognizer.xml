@@ -6,11 +6,156 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context=".Recognizer" >
-
-    <TextView
+    tools:context=".RecognizerActivity" >
+    
+    <Button
+        android:id="@+id/serviceStart"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/hello_world" />
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:onClick="startProvider"
+        android:text="@string/start" />
+
+    <Button
+        android:id="@+id/serviceStop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/serviceStart"
+        android:onClick="stopProvider"
+        android:text="@string/stop" />
+
+    <LinearLayout
+        android:id="@+id/samplingRateLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="200dp"
+        android:layout_alignParentTop="true" >
+
+        <TextView
+            android:id="@+id/samplingInputDesc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sampling_rate_desc"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <EditText
+            android:id="@+id/samplingRateInput"
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:inputType="number"
+            android:text="@string/default_sampling_rate" >
+            
+       	</EditText>
+
+        <TextView
+            android:id="@+id/secondsDesc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/seconds"
+            android:textAppearance="?android:attr/textAppearanceSmall" />
+
+    </LinearLayout>
+
+
+    <ImageView
+        android:id="@+id/walkingView"
+        android:layout_marginTop="20dp"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_centerHorizontal="true"
+        android:contentDescription="@string/temp_description"
+        android:maxHeight="50dp"
+        android:maxWidth="175dp"
+        android:minHeight="50dp"
+        android:minWidth="175dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/walking"
+        android:visibility="invisible" />
+    <ImageView
+        android:id="@+id/carView"
+        android:layout_marginTop="20dp"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_centerHorizontal="true"
+        android:contentDescription="@string/temp_description"
+        android:maxHeight="50dp"
+        android:maxWidth="175dp"
+        android:minHeight="50dp"
+        android:minWidth="175dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/car"
+        android:visibility="invisible" />
+    <ImageView
+        android:id="@+id/trainView"
+        android:layout_marginTop="20dp"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_centerHorizontal="true"
+        android:contentDescription="@string/temp_description"
+        android:maxHeight="50dp"
+        android:maxWidth="175dp"
+        android:minHeight="50dp"
+        android:minWidth="175dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/train"
+        android:visibility="invisible" />
+    <ImageView
+        android:id="@+id/idleView"
+        android:layout_marginTop="20dp"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_centerHorizontal="true"
+        android:contentDescription="@string/temp_description"
+        android:maxHeight="50dp"
+        android:maxWidth="175dp"
+        android:minHeight="50dp"
+        android:minWidth="175dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/idle"
+        android:visibility="invisible" />
+    <ImageView
+        android:id="@+id/noneView"
+        android:layout_marginTop="20dp"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_centerHorizontal="true"
+        android:contentDescription="@string/temp_description"
+        android:maxHeight="50dp"
+        android:maxWidth="175dp"
+        android:minHeight="50dp"
+        android:minWidth="175dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/none"
+        android:visibility="invisible" />
+    
+    <ListView
+        android:id="@+id/historyView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/samplingRateLayout"
+        android:layout_centerHorizontal="true"
+        android:background="@color/black"
+        android:divider="@color/white"
+        android:dividerHeight="1dp" >
+    </ListView>
+    <!-- Empty item for ListView -->
+    <LinearLayout
+        android:id="@+id/emptyView"
+        android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    android:layout_below="@+id/samplingRateLayout"
+	    android:paddingLeft="10dp"
+	    android:visibility="gone" >
+        <TextView
+            android:id="@+id/emptyHistoryText"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:textSize="25sp"
+            android:text="@string/history_empty" />
+    </LinearLayout>
 
 </RelativeLayout>
