@@ -52,12 +52,24 @@
             android:label="@string/app_name"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="stateHidden" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="it.unibo.cs.jonus.waidrec.RecognizerActivity" />
         </activity>
 
         <service
             android:name="it.unibo.cs.jonus.waidrec.TrainingService"
             android:label="@string/recognizer_service_name" >
         </service>
+
+        <activity
+            android:name="it.unibo.cs.jonus.waidrec.HistoryActivity"
+            android:label="@string/title_activity_history"
+            android:parentActivityName="it.unibo.cs.jonus.waidrec.RecognizerActivity" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="it.unibo.cs.jonus.waidrec.RecognizerActivity" />
+        </activity>
     </application>
 
 </manifest>
