@@ -5,8 +5,12 @@ package it.unibo.cs.jonus.waidrec;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -80,6 +84,24 @@ public class HistoryManager {
 
 		// Write the item in the current history array
 		currentHistoryJSON.put(jsonItem);
+	}
+
+	/**
+	 * Returns a list of the JSON history files
+	 * @return an ArrayList of File objects
+	 */
+	public ArrayList<File> getFilesList() {
+		File[] filesArray = filesDir.listFiles(new FilenameFilter() {
+			@Override
+			public boolean accept(File pathName, String fileName) {
+				return fileName.endsWith(".json");
+			}
+		});
+
+		ArrayList<File> filesList = new ArrayList<File>(
+				Arrays.asList(filesArray));
+
+		return filesList;
 	}
 
 }
