@@ -238,6 +238,10 @@ public class RecognizerActivity extends Activity {
 				startActivity(trainingActivity);
 			}
 			break;
+		case R.id.action_history:
+			Intent historyActivity = new Intent(context, HistoryActivity.class);
+			startActivity(historyActivity);
+			break;
 		default:
 			break;
 		}
