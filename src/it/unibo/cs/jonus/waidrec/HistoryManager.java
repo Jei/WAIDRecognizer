@@ -5,16 +5,18 @@ package it.unibo.cs.jonus.waidrec;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileFilter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 /**
  * @author jei
@@ -67,7 +69,8 @@ public class HistoryManager {
 	 *            history item to write
 	 * @throws JSONException
 	 */
-	public void writeHistoryItem(HistoryItem item) throws JSONException {
+	@SuppressWarnings("unchecked")
+	public void writeHistoryItem(HistoryItem item) {
 		// Create a new JSON object for this item
 		JSONObject jsonItem = new JSONObject();
 
@@ -83,7 +86,7 @@ public class HistoryManager {
 		jsonItem.put("stdg", item.getGyroFeatures().getStandardDeviation());
 
 		// Write the item in the current history array
-		currentHistoryJSON.put(jsonItem);
+		currentHistoryJSON.add(jsonItem);
 	}
 
 	/**
@@ -102,6 +105,21 @@ public class HistoryManager {
 				Arrays.asList(filesArray));
 
 		return filesList;
+	}
+	
+	/**
+	 * Get the JSON array from the specified JSON file
+	 * @param the File object to read
+	 * @return a JSONArray of JSONObjects
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 * @throws ParseException
+	 */
+	public JSONArray getJSONData(File JSONfile) throws FileNotFoundException, IOException, ParseException {
+		JSONParser parser = new JSONParser();
+		JSONArray array = (JSONArray) parser.parse(new FileReader(JSONfile));
+		
+		return array;
 	}
 
 }
