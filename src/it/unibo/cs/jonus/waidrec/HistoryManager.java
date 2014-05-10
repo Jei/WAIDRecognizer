@@ -76,14 +76,28 @@ public class HistoryManager {
 
 		jsonItem.put("timestamp", item.getTimestamp());
 		jsonItem.put("category", item.getCategory());
-		jsonItem.put("avga", item.getAccelFeatures().getAverage());
-		jsonItem.put("avgg", item.getGyroFeatures().getAverage());
-		jsonItem.put("mina", item.getAccelFeatures().getMinimum());
-		jsonItem.put("ming", item.getGyroFeatures().getMinimum());
-		jsonItem.put("maxa", item.getAccelFeatures().getMaximum());
-		jsonItem.put("maxg", item.getGyroFeatures().getMaximum());
-		jsonItem.put("stda", item.getAccelFeatures().getStandardDeviation());
-		jsonItem.put("stdg", item.getGyroFeatures().getStandardDeviation());
+		if (item.getAccelFeatures() != null) {
+			jsonItem.put("avga", item.getAccelFeatures().getAverage());
+			jsonItem.put("mina", item.getAccelFeatures().getMinimum());
+			jsonItem.put("maxa", item.getAccelFeatures().getMaximum());
+			jsonItem.put("stda", item.getAccelFeatures().getStandardDeviation());
+		} else {
+			jsonItem.put("avga", null);
+			jsonItem.put("mina", null);
+			jsonItem.put("maxa", null);
+			jsonItem.put("stda", null);
+		}
+		if (item.getGyroFeatures() != null) {
+			jsonItem.put("avgg", item.getGyroFeatures().getAverage());
+			jsonItem.put("ming", item.getGyroFeatures().getMinimum());
+			jsonItem.put("maxg", item.getGyroFeatures().getMaximum());
+			jsonItem.put("stdg", item.getGyroFeatures().getStandardDeviation());
+		} else {
+			jsonItem.put("avgg", null);
+			jsonItem.put("ming", null);
+			jsonItem.put("maxg", null);
+			jsonItem.put("stdg", null);
+		}
 
 		// Write the item in the current history array
 		currentHistoryJSON.add(jsonItem);
@@ -91,6 +105,7 @@ public class HistoryManager {
 
 	/**
 	 * Returns a list of the JSON history files
+	 * 
 	 * @return an ArrayList of File objects
 	 */
 	public ArrayList<File> getFilesList() {
@@ -106,19 +121,22 @@ public class HistoryManager {
 
 		return filesList;
 	}
-	
+
 	/**
 	 * Get the JSON array from the specified JSON file
-	 * @param the File object to read
+	 * 
+	 * @param the
+	 *            File object to read
 	 * @return a JSONArray of JSONObjects
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	public JSONArray getJSONData(File JSONfile) throws FileNotFoundException, IOException, ParseException {
+	public JSONArray getJSONData(File JSONfile) throws FileNotFoundException,
+			IOException, ParseException {
 		JSONParser parser = new JSONParser();
 		JSONArray array = (JSONArray) parser.parse(new FileReader(JSONfile));
-		
+
 		return array;
 	}
 
