@@ -7,8 +7,6 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import org.json.JSONException;
-
 import weka.core.Attribute;
 import weka.core.FastVector;
 import weka.core.Instance;
@@ -100,7 +98,7 @@ public class RecognizerService extends Service {
 			MagnitudeListener.READING_DELAY_NORMAL);
 
 	private Handler classificationHandler;
-	
+
 	private HistoryManager historyManager;
 
 	// Runnable for vehicle classification
@@ -113,24 +111,30 @@ public class RecognizerService extends Service {
 
 			// Create the instance
 			Instance inst = new Instance(9);
+			for (int i = 0; i < 9; i++) {
+				inst.setMissing((Attribute) fvWekaAttributes.elementAt(i));
+			}
 
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(0),
-					accelFeatures.getAverage());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(1),
-					gyroFeatures.getAverage());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(2),
-					accelFeatures.getMaximum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(3),
-					gyroFeatures.getMaximum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(4),
-					accelFeatures.getMinimum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(5),
-					gyroFeatures.getMinimum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(6),
-					accelFeatures.getStandardDeviation());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
-					gyroFeatures.getStandardDeviation());
-			inst.setMissing((Attribute) fvWekaAttributes.elementAt(8));
+			if (accelFeatures != null) {
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(0),
+						accelFeatures.getAverage());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(2),
+						accelFeatures.getMaximum());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(4),
+						accelFeatures.getMinimum());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(6),
+						accelFeatures.getStandardDeviation());
+			}
+			if (gyroFeatures != null) {
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(1),
+						gyroFeatures.getAverage());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(3),
+						gyroFeatures.getMaximum());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(5),
+						gyroFeatures.getMinimum());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
+						gyroFeatures.getStandardDeviation());
+			}
 
 			// add the instance
 			isTestingSet.add(inst);
@@ -150,12 +154,12 @@ public class RecognizerService extends Service {
 			accelListener.clearMagnitudes();
 
 			String classification = isTestingSet.instance(0).stringValue(8);
-			
+
 			Long currentTime = System.currentTimeMillis();
 
 			// send evaluation to content provider
 			sendEvaluation(classification, currentTime);
-			
+
 			// Write evaluation to history
 			HistoryItem newItem = new HistoryItem();
 			newItem.setTimestamp(currentTime);
@@ -187,7 +191,7 @@ public class RecognizerService extends Service {
 	@Override
 	public void onCreate() {
 		modelManager = new ModelManager();
-		
+
 		historyManager = new HistoryManager(getFilesDir());
 
 		classifier = null;
@@ -315,7 +319,7 @@ public class RecognizerService extends Service {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
+
 			// launch the execution of the delayed classification task
 			samplingRate = bundle.getInt("sampling");
 			classificationHandler = new Handler();
