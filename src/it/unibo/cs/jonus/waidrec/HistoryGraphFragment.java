@@ -4,9 +4,9 @@
 package it.unibo.cs.jonus.waidrec;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
-
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -46,19 +46,38 @@ public class HistoryGraphFragment extends Fragment {
 		// Create a new graph with the JSON data
 		JSONArray data = (JSONArray) getArguments().getSerializable(
 				ARG_JSON_DATA);
+		// FIXME
+		if (data == null) {
+			data = new JSONArray();
+		}
+
 		GraphView graphView = new LineGraphView(getActivity(),
 				"HistoryGraphView");
-		GraphViewData[] accelAvgData = new GraphViewData[data.size()];
-		GraphViewData[] gyroAvgData = new GraphViewData[data.size()];
-		GraphViewData[] accelMaxData = new GraphViewData[data.size()];
-		GraphViewData[] gyroMaxData = new GraphViewData[data.size()];
-		GraphViewData[] accelMinData = new GraphViewData[data.size()];
-		GraphViewData[] gyroMinData = new GraphViewData[data.size()];
-		GraphViewData[] accelStdData = new GraphViewData[data.size()];
-		GraphViewData[] gyroStdData = new GraphViewData[data.size()];
+		ArrayList<GraphViewData> categoryData = new ArrayList<GraphViewData>();
+		ArrayList<GraphViewData> accelAvgData = new ArrayList<GraphViewData>();
+		ArrayList<GraphViewData> gyroAvgData = new ArrayList<GraphViewData>();
+		ArrayList<GraphViewData> accelMaxData = new ArrayList<GraphViewData>();
+		ArrayList<GraphViewData> gyroMaxData = new ArrayList<GraphViewData>();
+		ArrayList<GraphViewData> accelMinData = new ArrayList<GraphViewData>();
+		ArrayList<GraphViewData> gyroMinData = new ArrayList<GraphViewData>();
+		ArrayList<GraphViewData> accelStdData = new ArrayList<GraphViewData>();
+		ArrayList<GraphViewData> gyroStdData = new ArrayList<GraphViewData>();
+
+		// Store the categories in an array to generate the labels
+		final ArrayList<String> labelsArray = new ArrayList<String>();
 		for (int i = 0; i < data.size(); i++) {
 			JSONObject jsonObj = (JSONObject) data.get(i);
+			String category = (String) jsonObj.get("category");
+			if (!labelsArray.contains(category)) {
+				labelsArray.add(category);
+			}
+		}
+
+		for (int i = 0; i < data.size(); i++) {
+			// FIXME
+			JSONObject jsonObj = (JSONObject) data.get(i);
 			Long timestamp = (Long) jsonObj.get("timestamp");
+			String category = (String) jsonObj.get("category");
 			Double avga = (Double) jsonObj.get("avga");
 			Double avgg = (Double) jsonObj.get("avgg");
 			Double maxa = (Double) jsonObj.get("maxa");
@@ -67,17 +86,43 @@ public class HistoryGraphFragment extends Fragment {
 			Double ming = (Double) jsonObj.get("ming");
 			Double stda = (Double) jsonObj.get("stda");
 			Double stdg = (Double) jsonObj.get("stdg");
-			accelAvgData[i] = new GraphViewData(timestamp.doubleValue(), avga);
-			gyroAvgData[i] = new GraphViewData(timestamp.doubleValue(), avgg);
-			accelMaxData[i] = new GraphViewData(timestamp.doubleValue(), maxa);
-			gyroMaxData[i] = new GraphViewData(timestamp.doubleValue(), maxg);
-			accelMinData[i] = new GraphViewData(timestamp.doubleValue(), mina);
-			gyroMinData[i] = new GraphViewData(timestamp.doubleValue(), ming);
-			accelStdData[i] = new GraphViewData(timestamp.doubleValue(), stda);
-			gyroStdData[i] = new GraphViewData(timestamp.doubleValue(), stdg);
+			categoryData.add(new GraphViewData(timestamp.doubleValue(),
+					labelsArray.indexOf(category)));
+			if (avga != null) {
+				accelAvgData.add(new GraphViewData(timestamp.doubleValue(),
+						avga));
+			}
+			if (avgg != null) {
+				gyroAvgData
+						.add(new GraphViewData(timestamp.doubleValue(), avgg));
+			}
+			if (maxa != null) {
+				accelMaxData.add(new GraphViewData(timestamp.doubleValue(),
+						maxa));
+			}
+			if (maxg != null) {
+				gyroMaxData
+						.add(new GraphViewData(timestamp.doubleValue(), maxg));
+			}
+			if (mina != null) {
+				accelMinData.add(new GraphViewData(timestamp.doubleValue(),
+						mina));
+			}
+			if (ming != null) {
+				gyroMinData
+						.add(new GraphViewData(timestamp.doubleValue(), ming));
+			}
+			if (stda != null) {
+				accelStdData.add(new GraphViewData(timestamp.doubleValue(),
+						stda));
+			}
+			if (stdg != null) {
+				gyroStdData
+						.add(new GraphViewData(timestamp.doubleValue(), stdg));
+			}
 		}
-		// Set custom formatter for x axis (timestamp)
 
+		// Set custom formatter for x and y axis (timestamp and category)
 		graphView.setCustomLabelFormatter(new CustomLabelFormatter() {
 
 			@Override
@@ -89,47 +134,63 @@ public class HistoryGraphFragment extends Fragment {
 					String humanDate = sdfDateTime
 							.format(new Date((long) value));
 					return humanDate;
+				} else {
+					if (value >= labelsArray.size()
+							|| value < 0) {
+						return new String("");
+					} else {
+						return labelsArray.get((int) value);
+					}
 				}
-				return null; // let graphview generate Y-axis label for us
 			}
 		});
 
-		GraphViewSeriesStyle accelAvgStyle = new GraphViewSeriesStyle(
-				Color.rgb(180, 50, 00), 4);
-		GraphViewSeriesStyle gyroAvgStyle = new GraphViewSeriesStyle(
-				Color.rgb(90, 190, 00), 4);
-		GraphViewSeriesStyle accelMaxStyle = new GraphViewSeriesStyle(
-				Color.rgb(200, 50, 00), 4);
-		GraphViewSeriesStyle gyroMaxStyle = new GraphViewSeriesStyle(
-				Color.rgb(90, 210, 00), 4);
-		GraphViewSeriesStyle accelMinStyle = new GraphViewSeriesStyle(
-				Color.rgb(220, 50, 00), 4);
-		GraphViewSeriesStyle gyroMinStyle = new GraphViewSeriesStyle(
-				Color.rgb(90, 230, 00), 4);
-		GraphViewSeriesStyle accelStdStyle = new GraphViewSeriesStyle(
-				Color.rgb(240, 50, 00), 4);
-		GraphViewSeriesStyle gyroStdStyle = new GraphViewSeriesStyle(
-				Color.rgb(90, 250, 00), 4);
-		graphView.addSeries(new GraphViewSeries("avga", accelAvgStyle,
-				accelAvgData));
-		graphView.addSeries(new GraphViewSeries("avgg", gyroAvgStyle,
-				gyroAvgData));
-		graphView.addSeries(new GraphViewSeries("maxa", accelMaxStyle,
-				accelMaxData));
-		graphView.addSeries(new GraphViewSeries("maxg", gyroMaxStyle,
-				gyroMaxData));
-		graphView.addSeries(new GraphViewSeries("mina", accelMinStyle,
-				accelMinData));
-		graphView.addSeries(new GraphViewSeries("ming", gyroMinStyle,
-				gyroMinData));
-		graphView.addSeries(new GraphViewSeries("stda", accelStdStyle,
-				accelStdData));
-		graphView.addSeries(new GraphViewSeries("stdg", gyroStdStyle,
-				gyroStdData));
+		// FIXME
+		GraphViewSeriesStyle categoryStyle = new GraphViewSeriesStyle(
+				Color.rgb(100, 00, 100), 6);
+		graphView.addSeries(new GraphViewSeries("Category", categoryStyle,
+				categoryData.toArray(new GraphViewData[categoryData.size()])));
+
+		// TODO different graph for magnitude features
+		/*
+		 * GraphViewSeriesStyle accelAvgStyle = new GraphViewSeriesStyle(
+		 * Color.rgb(180, 50, 00), 4); GraphViewSeriesStyle gyroAvgStyle = new
+		 * GraphViewSeriesStyle(Color.rgb( 90, 190, 00), 4);
+		 * GraphViewSeriesStyle accelMaxStyle = new GraphViewSeriesStyle(
+		 * Color.rgb(200, 50, 00), 4); GraphViewSeriesStyle gyroMaxStyle = new
+		 * GraphViewSeriesStyle(Color.rgb( 90, 210, 00), 4);
+		 * GraphViewSeriesStyle accelMinStyle = new GraphViewSeriesStyle(
+		 * Color.rgb(220, 50, 00), 4); GraphViewSeriesStyle gyroMinStyle = new
+		 * GraphViewSeriesStyle(Color.rgb( 90, 230, 00), 4);
+		 * GraphViewSeriesStyle accelStdStyle = new GraphViewSeriesStyle(
+		 * Color.rgb(240, 50, 00), 4); GraphViewSeriesStyle gyroStdStyle = new
+		 * GraphViewSeriesStyle(Color.rgb( 90, 250, 00), 4);
+		 * graphView.addSeries(new GraphViewSeries("avga", accelAvgStyle,
+		 * accelAvgData.toArray(new GraphViewData[accelAvgData.size()])));
+		 * graphView.addSeries(new GraphViewSeries("avgg", gyroAvgStyle,
+		 * gyroAvgData.toArray(new GraphViewData[gyroAvgData.size()])));
+		 * graphView.addSeries(new GraphViewSeries("maxa", accelMaxStyle,
+		 * accelMaxData.toArray(new GraphViewData[accelMaxData.size()])));
+		 * graphView.addSeries(new GraphViewSeries("maxg", gyroMaxStyle,
+		 * gyroMaxData.toArray(new GraphViewData[gyroMaxData.size()])));
+		 * graphView.addSeries(new GraphViewSeries("mina", accelMinStyle,
+		 * accelMinData.toArray(new GraphViewData[accelMinData.size()])));
+		 * graphView.addSeries(new GraphViewSeries("ming", gyroMinStyle,
+		 * gyroMinData.toArray(new GraphViewData[gyroMinData.size()])));
+		 * graphView.addSeries(new GraphViewSeries("stda", accelStdStyle,
+		 * accelStdData.toArray(new GraphViewData[accelStdData.size()])));
+		 * graphView.addSeries(new GraphViewSeries("stdg", gyroStdStyle,
+		 * gyroStdData.toArray(new GraphViewData[gyroStdData.size()])));
+		 */
+
 		graphView.setShowLegend(true);
-		graphView.getGraphViewStyle().setTextSize(20);
-		graphView.getGraphViewStyle().setNumVerticalLabels(10);
+		graphView.getGraphViewStyle().setTextSize(22);
 		graphView.getGraphViewStyle().setNumHorizontalLabels(5);
+		if (labelsArray.size() > 1) {
+			graphView.getGraphViewStyle().setNumVerticalLabels(labelsArray.size());
+		} else {
+			graphView.getGraphViewStyle().setNumVerticalLabels(3);
+		}
 		graphView.getGraphViewStyle().setHorizontalLabelsColor(Color.BLACK);
 		graphView.getGraphViewStyle().setVerticalLabelsColor(Color.BLACK);
 		graphView.setScrollable(true);
