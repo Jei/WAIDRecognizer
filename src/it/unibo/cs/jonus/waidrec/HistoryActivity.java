@@ -1,15 +1,20 @@
 package it.unibo.cs.jonus.waidrec;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
+
+import org.json.simple.JSONArray;
+import org.json.simple.parser.ParseException;
 
 import android.annotation.TargetApi;
 import android.app.ActionBar;
+import android.app.Activity;
+import android.app.Fragment;
 import android.os.Bundle;
 import android.content.Context;
 import android.os.Build;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.NavUtils;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -18,7 +23,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-public class HistoryActivity extends FragmentActivity implements
+public class HistoryActivity extends Activity implements
 		ActionBar.OnNavigationListener {
 
 	/**
@@ -111,11 +116,28 @@ public class HistoryActivity extends FragmentActivity implements
 	public boolean onNavigationItemSelected(int position, long id) {
 		// When the given dropdown item is selected, show its contents in the
 		// container view.
-		Fragment fragment = new DummySectionFragment();
+		Fragment fragment = new HistoryGraphFragment();
 		Bundle args = new Bundle();
-		args.putInt(DummySectionFragment.ARG_SECTION_NUMBER, position + 1);
+		
+		// Get JSON data from the file selected
+		File selectedFile = historyFiles.get(position);
+		JSONArray historyJSON = null;
+		try {
+			historyJSON = historyManager.getJSONData(selectedFile);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		// Call the new fragment with the JSON data
+		args.putSerializable(HistoryGraphFragment.ARG_JSON_DATA, historyJSON);
 		fragment.setArguments(args);
-		getSupportFragmentManager().beginTransaction()
+		getFragmentManager().beginTransaction()
 				.replace(R.id.container, fragment).commit();
 		return true;
 	}

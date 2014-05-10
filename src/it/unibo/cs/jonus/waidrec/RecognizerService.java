@@ -162,12 +162,7 @@ public class RecognizerService extends Service {
 			newItem.setCategory(classification);
 			newItem.setAccelFeatures(accelFeatures);
 			newItem.setGyroFeatures(gyroFeatures);
-			try {
-				historyManager.writeHistoryItem(newItem);
-			} catch (JSONException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
+			historyManager.writeHistoryItem(newItem);
 
 			// Write instance to temp file
 			try {
