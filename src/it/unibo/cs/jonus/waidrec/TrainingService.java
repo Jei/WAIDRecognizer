@@ -51,6 +51,7 @@ public class TrainingService extends Service {
 	private static final int SCREEN_OFF_RECEIVER_DELAY = 500;
 
 	private Handler trainingHandler;
+	private Handler startHandler;
 
 	// Runnable for training
 	private Runnable trainingRunnable = new Runnable() {
@@ -62,25 +63,32 @@ public class TrainingService extends Service {
 
 			// Create the instance
 			Instance inst = new Instance(9);
+			for (int i = 0; i < 8; i++) {
+				inst.setMissing((Attribute) fvWekaAttributes.elementAt(i));
+			}
 
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(0),
-					accelFeatures.getAverage());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(1),
-					gyroFeatures.getAverage());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(2),
-					accelFeatures.getMaximum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(3),
-					gyroFeatures.getMaximum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(4),
-					accelFeatures.getMinimum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(5),
-					gyroFeatures.getMinimum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(6),
-					accelFeatures.getStandardDeviation());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
-					gyroFeatures.getStandardDeviation());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(8),
-					vehicleClass);
+			if (accelFeatures != null) {
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(0),
+						accelFeatures.getAverage());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(2),
+						accelFeatures.getMaximum());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(4),
+						accelFeatures.getMinimum());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(6),
+						accelFeatures.getStandardDeviation());
+			}
+			if (gyroFeatures != null) {
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(1),
+						gyroFeatures.getAverage());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(3),
+						gyroFeatures.getMaximum());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(5),
+						gyroFeatures.getMinimum());
+				inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
+						gyroFeatures.getStandardDeviation());
+			}
+			
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(8), vehicleClass);
 
 			// add the instance
 			trainingSet.add(inst);
@@ -104,7 +112,7 @@ public class TrainingService extends Service {
 			trainingSet.delete();
 
 			// Reset delayed runnable
-			trainingHandler.postDelayed(trainingRunnable, samplingRate * 1000);
+			trainingHandler.postDelayed(trainingRunnable, samplingRate);
 		}
 	};
 
@@ -191,6 +199,7 @@ public class TrainingService extends Service {
 		registerSensors();
 		
 		trainingHandler = new Handler();
+		startHandler = new Handler();
 
 	}
 
@@ -230,13 +239,12 @@ public class TrainingService extends Service {
 		}
 
 		// start sensor reading after several seconds
-		final Handler handler = new Handler();
-		handler.postDelayed(new Runnable() {
+		startHandler.postDelayed(new Runnable() {
 			@Override
 			public void run() {
 				// launch the execution of the delayed classification task
 				trainingHandler.postDelayed(trainingRunnable,
-						samplingRate * 1000);
+						samplingRate);
 				accelListener.startGenerating();
 				gyroListener.startGenerating();
 			}
