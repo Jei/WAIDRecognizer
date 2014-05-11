@@ -54,8 +54,6 @@
 
     <string name="title_activity_history">HistoryActivity</string>
     <string name="history">History</string>
-    <string name="title_section1">Section 1</string>
-    <string name="title_section2">Section 2</string>
-    <string name="title_section3">Section 3</string>
+    <string name="delete_history_file">Delete</string>
 
 </resources>

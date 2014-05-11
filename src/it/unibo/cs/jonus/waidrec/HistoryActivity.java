@@ -16,12 +16,8 @@ import android.os.Bundle;
 import android.content.Context;
 import android.os.Build;
 import android.support.v4.app.NavUtils;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
 
 public class HistoryActivity extends Activity implements
 		ActionBar.OnNavigationListener {
@@ -34,6 +30,7 @@ public class HistoryActivity extends Activity implements
 
 	private HistoryManager historyManager;
 	private ArrayList<File> historyFiles;
+	private HistorySelectorAdapter historyAdapter;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +40,9 @@ public class HistoryActivity extends Activity implements
 		// Get the list of history files from the history manager
 		historyManager = new HistoryManager(getFilesDir());
 		historyFiles = historyManager.getFilesList();
+		// Use the custom HistorySelectorAdapter for the dropdown list.
+		historyAdapter = new HistorySelectorAdapter(
+				getActionBarThemedContextCompat(), historyFiles);
 
 		// Set up the action bar to show a dropdown list.
 		final ActionBar actionBar = getActionBar();
@@ -52,10 +52,7 @@ public class HistoryActivity extends Activity implements
 		actionBar.setDisplayHomeAsUpEnabled(true);
 
 		// Set up the dropdown list navigation in the action bar.
-		actionBar.setListNavigationCallbacks(
-		// Use the custom HistorySelectorAdapter for the dropdown list.
-				new HistorySelectorAdapter(getActionBarThemedContextCompat(),
-						historyFiles), this);
+		actionBar.setListNavigationCallbacks(historyAdapter, this);
 	}
 
 	/**
@@ -91,7 +88,7 @@ public class HistoryActivity extends Activity implements
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
-		// getMenuInflater().inflate(R.menu.history, menu);
+		getMenuInflater().inflate(R.menu.history, menu);
 		return true;
 	}
 
@@ -108,6 +105,19 @@ public class HistoryActivity extends Activity implements
 			//
 			NavUtils.navigateUpFromSameTask(this);
 			return true;
+		case R.id.action_delete_history_file:
+			// Get the selected item and delete the corresponding file
+			int selectedItem = getActionBar().getSelectedNavigationIndex();
+			File selectedFile = historyFiles.get(selectedItem);
+
+			if (historyManager.deleteFile(selectedFile)) {
+				// Update the action bar menu
+				historyFiles = historyManager.getFilesList();
+				historyAdapter.remove(selectedFile);
+				historyAdapter.notifyDataSetChanged();
+			}
+
+			return true;
 		}
 		return super.onOptionsItemSelected(item);
 	}
@@ -118,7 +128,7 @@ public class HistoryActivity extends Activity implements
 		// container view.
 		Fragment fragment = new HistoryGraphFragment();
 		Bundle args = new Bundle();
-		
+
 		// Get JSON data from the file selected
 		File selectedFile = historyFiles.get(position);
 		JSONArray historyJSON = null;
@@ -140,33 +150,6 @@ public class HistoryActivity extends Activity implements
 		getFragmentManager().beginTransaction()
 				.replace(R.id.container, fragment).commit();
 		return true;
-	}
-
-	/**
-	 * A dummy fragment representing a section of the app, but that simply
-	 * displays dummy text.
-	 */
-	public static class DummySectionFragment extends Fragment {
-		/**
-		 * The fragment argument representing the section number for this
-		 * fragment.
-		 */
-		public static final String ARG_SECTION_NUMBER = "section_number";
-
-		public DummySectionFragment() {
-		}
-
-		@Override
-		public View onCreateView(LayoutInflater inflater, ViewGroup container,
-				Bundle savedInstanceState) {
-			View rootView = inflater.inflate(R.layout.fragment_history_dummy,
-					container, false);
-			TextView dummyTextView = (TextView) rootView
-					.findViewById(R.id.section_label);
-			dummyTextView.setText(Integer.toString(getArguments().getInt(
-					ARG_SECTION_NUMBER)));
-			return rootView;
-		}
 	}
 
 }
