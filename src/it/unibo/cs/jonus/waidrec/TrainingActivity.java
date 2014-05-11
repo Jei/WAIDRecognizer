@@ -54,7 +54,11 @@ public class TrainingActivity extends Activity {
 	private static final int NOTIFICATION_GENERATING_MODEL = R.string.model_generating;
 	private static final int NOTIFICATION_MODEL_GENERATED = R.string.model_generated;
 	private static final int NOTIFICATION_MODEL_GENERATION_ERROR = R.string.model_generation_error;
+	private static final int NOTIFICATION_MODEL_GENERATION_IOEXCEPTION = R.string.model_generation_ioexception;
+	private static final int NOTIFICATION_MODEL_GENERATION_EXCEPTION = R.string.model_generation_exception;
 	private static final int NOTIFICATION_TRAINING_RUNNING = R.string.training_service_running;
+	private static final int ERROR_MODEL_GENERATION_IOEXCEPTION = 10;
+	private static final int ERROR_MODEL_GENERATION_EXCEPTION = 11;
 
 	private ServiceConnection trainingServiceConnection = new ServiceConnection() {
 		public void onServiceConnected(ComponentName className, IBinder service) {
@@ -82,23 +86,36 @@ public class TrainingActivity extends Activity {
 				dialog.dismiss();
 			}
 
-			if (code == 0) {
+			switch (code) {
+			case 0:
 				Toast.makeText(TrainingActivity.this, R.string.model_generated,
 						Toast.LENGTH_SHORT).show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
 				showNotification(NOTIFICATION_MODEL_GENERATED, true);
-				
-				vehicleSpinner.setEnabled(true);
-				trainingFrequencyInput.setEnabled(true);
-				overwriteRadio.setEnabled(true);
-				appendRadio.setEnabled(true);
-				startButton.setEnabled(true);
-				modelResetButton.setEnabled(true);
-				
-				stopButton.setEnabled(false);
-				
-				generating = false;
-			} else {
+
+				break;
+			case ERROR_MODEL_GENERATION_IOEXCEPTION:
+				new AlertDialog.Builder(context)
+						.setTitle(getText(R.string.error))
+						.setMessage(
+								getText(NOTIFICATION_MODEL_GENERATION_IOEXCEPTION))
+						.show();
+				hideNotification(NOTIFICATION_GENERATING_MODEL);
+				showNotification(NOTIFICATION_MODEL_GENERATION_IOEXCEPTION,
+						true);
+
+				break;
+			case ERROR_MODEL_GENERATION_EXCEPTION:
+				new AlertDialog.Builder(context)
+						.setTitle(getText(R.string.error))
+						.setMessage(
+								getText(NOTIFICATION_MODEL_GENERATION_EXCEPTION))
+						.show();
+				hideNotification(NOTIFICATION_GENERATING_MODEL);
+				showNotification(NOTIFICATION_MODEL_GENERATION_EXCEPTION, true);
+
+				break;
+			default:
 				new AlertDialog.Builder(context)
 						.setTitle(getText(R.string.error))
 						.setMessage(
@@ -107,17 +124,19 @@ public class TrainingActivity extends Activity {
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
 				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true);
 
-				vehicleSpinner.setEnabled(true);
-				trainingFrequencyInput.setEnabled(true);
-				overwriteRadio.setEnabled(true);
-				appendRadio.setEnabled(true);
-				startButton.setEnabled(true);
-				modelResetButton.setEnabled(true);
-				
-				stopButton.setEnabled(false);
-				
-				generating = false;
+				break;
 			}
+
+			vehicleSpinner.setEnabled(true);
+			trainingFrequencyInput.setEnabled(true);
+			overwriteRadio.setEnabled(true);
+			appendRadio.setEnabled(true);
+			startButton.setEnabled(true);
+			modelResetButton.setEnabled(true);
+
+			stopButton.setEnabled(false);
+
+			generating = false;
 		}
 	};
 
@@ -131,7 +150,7 @@ public class TrainingActivity extends Activity {
 		startButton = (Button) findViewById(R.id.startTrainingButton);
 		stopButton = (Button) findViewById(R.id.stopTrainingButton);
 		modelResetButton = (Button) findViewById(R.id.resetModelButton);
-		
+
 		stopButton.setEnabled(false);
 
 		// Get context for general use
@@ -163,7 +182,8 @@ public class TrainingActivity extends Activity {
 	}
 
 	public void startTraining(View view) {
-		if (!serviceIsBound && !generating && trainingFrequencyInput.getText().length() != 0) {
+		if (!serviceIsBound && !generating
+				&& trainingFrequencyInput.getText().length() != 0) {
 			// Get the selected radio button for write mode
 			int writeMode = ((RadioGroup) findViewById(R.id.modeRadioGroup))
 					.getCheckedRadioButtonId();
@@ -224,14 +244,15 @@ public class TrainingActivity extends Activity {
 							appendRadio.setEnabled(false);
 							startButton.setEnabled(false);
 							modelResetButton.setEnabled(false);
-							
+
 							stopButton.setEnabled(true);
 
 							Toast.makeText(TrainingActivity.this,
 									R.string.training_service_started,
 									Toast.LENGTH_SHORT).show();
-							
-							showNotification(NOTIFICATION_TRAINING_RUNNING, false);
+
+							showNotification(NOTIFICATION_TRAINING_RUNNING,
+									false);
 						}
 					});
 			confirmDialog.setNegativeButton(android.R.string.cancel,
@@ -264,10 +285,10 @@ public class TrainingActivity extends Activity {
 					// Operations completed correctly, return 0
 					message.arg1 = 0;
 				} catch (IOException e) {
-					message.arg1 = 1;
+					message.arg1 = ERROR_MODEL_GENERATION_IOEXCEPTION;
 					e.printStackTrace();
 				} catch (Exception e) {
-					message.arg1 = 1;
+					message.arg1 = ERROR_MODEL_GENERATION_EXCEPTION;
 					e.printStackTrace();
 				}
 				if (!Thread.interrupted() && threadHandler != null) {
@@ -301,9 +322,9 @@ public class TrainingActivity extends Activity {
 			Intent serviceIntent = new Intent(TrainingActivity.this,
 					TrainingService.class);
 			stopService(serviceIntent);
-			
+
 			hideNotification(NOTIFICATION_TRAINING_RUNNING);
-			
+
 			serviceIsBound = false;
 			generating = true;
 
@@ -335,24 +356,21 @@ public class TrainingActivity extends Activity {
 			}
 
 			// TODO write temp file to external storage
-			/*try {
-				File externalStorage = new File(Environment
-						.getExternalStorageDirectory().toString()
-						+ File.separator + "waidrec");
-				externalStorage.mkdirs();
-				modelManager.overwriteArffFile(new File(vehicleFileName),
-						new File(externalStorage.getPath() + File.separator
-								+ vehicle + ".arff"));
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}*/
+			/*
+			 * try { File externalStorage = new File(Environment
+			 * .getExternalStorageDirectory().toString() + File.separator +
+			 * "waidrec"); externalStorage.mkdirs();
+			 * modelManager.overwriteArffFile(new File(vehicleFileName), new
+			 * File(externalStorage.getPath() + File.separator + vehicle +
+			 * ".arff")); } catch (IOException e) { // TODO Auto-generated catch
+			 * block e.printStackTrace(); }
+			 */
 
 			// Run model generation thread
 			ModelGenRunnable runnable = new ModelGenRunnable(progressDialog);
 			asyncThread = new Thread(null, runnable, "ModelGen", 204800);
 			asyncThread.start();
-			
+
 			showNotification(NOTIFICATION_GENERATING_MODEL, false);
 
 		}
@@ -410,12 +428,12 @@ public class TrainingActivity extends Activity {
 			ModelResetRunnable runnable = new ModelResetRunnable(progressDialog);
 			asyncThread = new Thread(null, runnable, "ModelReset", 204800);
 			asyncThread.start();
-			
+
 			// Show a notification
 			showNotification(NOTIFICATION_GENERATING_MODEL, false);
-			
+
 			generating = true;
-			
+
 			// Disable all the buttons and inputs until completion
 			vehicleSpinner.setEnabled(false);
 			trainingFrequencyInput.setEnabled(false);
@@ -444,7 +462,7 @@ public class TrainingActivity extends Activity {
 		// Set the info for the views that show in the notification panel.
 		notification.setLatestEventInfo(this,
 				getText(R.string.training_service_label), text, contentIntent);
-		
+
 		if (autoCancel) {
 			notification.flags |= Notification.FLAG_AUTO_CANCEL;
 		}

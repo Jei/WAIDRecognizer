@@ -15,7 +15,9 @@
     <string name="sensor_not_available">Not available</string>
     <string name="model_generating">Generating new model&#8230;</string>
     <string name="model_generated">New model generated</string>
-    <string name="model_generation_error">Error while generating the new model</string>
+    <string name="model_generation_error">Unknown error while generating the new model</string>
+    <string name="model_generation_ioexception">Error while generating the new model. Could not read or write file.</string>
+    <string name="model_generation_exception">Error while generating the new model. Classification error.</string>
     <string name="recognizer_started">Vehicle Recognizer started</string>
     <string name="error">Error</string>
     <string name="error_empty_field">History length or sampling rate missing!</string>
