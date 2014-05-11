@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -20,6 +21,7 @@ import com.jjoe64.graphview.LineGraphView;
 import android.app.Fragment;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -51,8 +53,7 @@ public class HistoryGraphFragment extends Fragment {
 			data = new JSONArray();
 		}
 
-		GraphView graphView = new LineGraphView(getActivity(),
-				"HistoryGraphView");
+		GraphView graphView = new LineGraphView(getActivity(), "History");
 		ArrayList<GraphViewData> categoryData = new ArrayList<GraphViewData>();
 		ArrayList<GraphViewData> accelAvgData = new ArrayList<GraphViewData>();
 		ArrayList<GraphViewData> gyroAvgData = new ArrayList<GraphViewData>();
@@ -135,8 +136,7 @@ public class HistoryGraphFragment extends Fragment {
 							.format(new Date((long) value));
 					return humanDate;
 				} else {
-					if (value >= labelsArray.size()
-							|| value < 0) {
+					if (value >= labelsArray.size() || value < 0) {
 						return new String("");
 					} else {
 						return labelsArray.get((int) value);
@@ -184,10 +184,15 @@ public class HistoryGraphFragment extends Fragment {
 		 */
 
 		graphView.setShowLegend(true);
-		graphView.getGraphViewStyle().setTextSize(22);
+		// Convert standard text sp size to px
+		float textSize = (float) TypedValue.applyDimension(
+				TypedValue.COMPLEX_UNIT_SP, 14, getResources()
+						.getDisplayMetrics());
+		graphView.getGraphViewStyle().setTextSize(textSize);
 		graphView.getGraphViewStyle().setNumHorizontalLabels(5);
 		if (labelsArray.size() > 1) {
-			graphView.getGraphViewStyle().setNumVerticalLabels(labelsArray.size());
+			graphView.getGraphViewStyle().setNumVerticalLabels(
+					labelsArray.size());
 		} else {
 			graphView.getGraphViewStyle().setNumVerticalLabels(3);
 		}
