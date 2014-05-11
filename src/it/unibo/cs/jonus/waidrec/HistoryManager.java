@@ -139,5 +139,15 @@ public class HistoryManager {
 
 		return array;
 	}
+	
+	
+	/**
+	 * Delete an history file
+	 * @param the File to delete
+	 * @return true if the file is succesfully deleted, false otherwise
+	 */
+	public boolean deleteFile(File file) {
+		return file.delete();
+	}
 
 }
