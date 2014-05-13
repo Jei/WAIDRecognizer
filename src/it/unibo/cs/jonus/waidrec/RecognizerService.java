@@ -19,6 +19,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.net.Uri;
@@ -29,14 +30,14 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.Toast;
 
 public class RecognizerService extends Service {
-	
-	// Static variable to check if the service is running
-	public static boolean isRunning = false;
-	
+
+	private SharedPreferences sharedPrefs;
+
 	// Evaluation insertion test objects
 	TimerTask testEvaluationTask;
 	Timer testEvaluationTimer;
@@ -194,8 +195,12 @@ public class RecognizerService extends Service {
 
 	@Override
 	public void onCreate() {
-		isRunning = true;
-		
+		// Get shared preferences
+		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+		// Write current service status to shared preferences
+		sharedPrefs.edit().putBoolean("recognizer_isrunning", true).commit();
+
 		modelManager = new ModelManager();
 
 		historyManager = new HistoryManager(getFilesDir());
@@ -308,8 +313,9 @@ public class RecognizerService extends Service {
 		if (wakeLock.isHeld()) {
 			wakeLock.release();
 		}
-		
-		isRunning = false;
+
+		// Write current service status to shared preferences
+		sharedPrefs.edit().putBoolean("recognizer_isrunning", false).commit();
 	}
 
 	@Override

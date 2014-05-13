@@ -120,6 +120,9 @@ public class RecognizerActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_recognizer);
+		
+		// Get shared preferences
+		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 
 		context = this;
 
@@ -217,7 +220,7 @@ public class RecognizerActivity extends Activity {
 		stopServiceButton.setEnabled(false);
 		
 		// Check if RecognizerService is already running
-		if (RecognizerService.isRunning == true) {
+		if (sharedPrefs.getBoolean("recognizer_isrunning", false)) {
 			startProvider(startServiceButton);
 		}
 	}
@@ -295,7 +298,6 @@ public class RecognizerActivity extends Activity {
 	// First application run test & set
 	private boolean firstRun() {
 		boolean currentValue;
-		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 		currentValue = sharedPrefs.getBoolean("first_run", true);
 		sharedPrefs.edit().putBoolean("first_run", false).commit();
 		return currentValue;
