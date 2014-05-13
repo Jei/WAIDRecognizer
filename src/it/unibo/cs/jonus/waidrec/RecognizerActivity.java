@@ -28,6 +28,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -53,6 +54,9 @@ public class RecognizerActivity extends Activity {
 	private ImageView carView;
 	private ImageView trainView;
 	private ImageView idleView;
+	
+	private Button startServiceButton;
+	private Button stopServiceButton;
 
 	private String currentClassification;
 
@@ -82,7 +86,6 @@ public class RecognizerActivity extends Activity {
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
 				showNotification(NOTIFICATION_MODEL_GENERATED, true);
 
-				generating = false;
 			} else {
 				new AlertDialog.Builder(context)
 						.setTitle(getText(R.string.error))
@@ -92,8 +95,9 @@ public class RecognizerActivity extends Activity {
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
 				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true);
 
-				generating = false;
 			}
+			
+			generating = false;
 		}
 	};
 
@@ -205,6 +209,17 @@ public class RecognizerActivity extends Activity {
 				.setAdapter(new HistoryListAdapter(context, evaluationsList));
 		historyView.setEmptyView(findViewById(R.id.emptyView));
 		historyView.setTranscriptMode(ListView.TRANSCRIPT_MODE_ALWAYS_SCROLL);
+		
+		// Set start/stop service buttons
+		startServiceButton = (Button) findViewById(R.id.serviceStart);
+		stopServiceButton = (Button) findViewById(R.id.serviceStop);
+		startServiceButton.setEnabled(true);
+		stopServiceButton.setEnabled(false);
+		
+		// Check if RecognizerService is already running
+		if (RecognizerService.isRunning == true) {
+			startProvider(startServiceButton);
+		}
 	}
 
 	@Override
@@ -217,8 +232,6 @@ public class RecognizerActivity extends Activity {
 
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
-		// Update the Training menu item if we are generating a new model
-		menu.findItem(R.id.action_training).setEnabled(!generating);
 		
 		return true;
 	}
@@ -335,6 +348,10 @@ public class RecognizerActivity extends Activity {
 
 				// Start listening for changes to the provider
 				registerContentObserver();
+				
+				// Set start/stop buttons
+				startServiceButton.setEnabled(false);
+				stopServiceButton.setEnabled(true);
 
 				// Show persistent notification
 				showNotification(NOTIFICATION_RECOGNIZER_STARTED, false);
@@ -353,6 +370,7 @@ public class RecognizerActivity extends Activity {
 	public void stopProvider(View view) {
 		unregisterContentObserver();
 		Context context = view.getContext();
+		
 		Intent service = new Intent(context, RecognizerService.class);
 		stopService(service);
 
@@ -381,6 +399,10 @@ public class RecognizerActivity extends Activity {
 			Log.v("TrainingService", "Error while overwriting vehicle file");
 			e.printStackTrace();
 		}
+		
+		// Set start/stop buttons
+		startServiceButton.setEnabled(true);
+		stopServiceButton.setEnabled(false);
 
 		// Hide persistent notification
 		hideNotification(NOTIFICATION_RECOGNIZER_STARTED);

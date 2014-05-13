@@ -33,6 +33,10 @@ import android.util.Log;
 import android.widget.Toast;
 
 public class RecognizerService extends Service {
+	
+	// Static variable to check if the service is running
+	public static boolean isRunning = false;
+	
 	// Evaluation insertion test objects
 	TimerTask testEvaluationTask;
 	Timer testEvaluationTimer;
@@ -190,6 +194,8 @@ public class RecognizerService extends Service {
 
 	@Override
 	public void onCreate() {
+		isRunning = true;
+		
 		modelManager = new ModelManager();
 
 		historyManager = new HistoryManager(getFilesDir());
@@ -302,6 +308,8 @@ public class RecognizerService extends Service {
 		if (wakeLock.isHeld()) {
 			wakeLock.release();
 		}
+		
+		isRunning = false;
 	}
 
 	@Override
