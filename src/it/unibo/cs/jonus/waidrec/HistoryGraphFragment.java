@@ -3,23 +3,21 @@
  */
 package it.unibo.cs.jonus.waidrec;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Locale;
 
+import org.achartengine.ChartFactory;
+import org.achartengine.GraphicalView;
+import org.achartengine.chart.PointStyle;
+import org.achartengine.model.TimeSeries;
+import org.achartengine.model.XYMultipleSeriesDataset;
+import org.achartengine.renderer.XYMultipleSeriesRenderer;
+import org.achartengine.renderer.XYSeriesRenderer;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
-import com.jjoe64.graphview.CustomLabelFormatter;
-import com.jjoe64.graphview.GraphView;
-import com.jjoe64.graphview.GraphView.GraphViewData;
-import com.jjoe64.graphview.GraphViewSeries;
-import com.jjoe64.graphview.GraphViewSeries.GraphViewSeriesStyle;
-import com.jjoe64.graphview.LineGraphView;
-
 import android.app.Fragment;
 import android.graphics.Color;
+import android.graphics.Paint.Align;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -32,6 +30,13 @@ import android.widget.LinearLayout;
  * 
  */
 public class HistoryGraphFragment extends Fragment {
+	// TODO add charts for sensor data and chart selector
+
+	private GraphicalView categoriesChart;
+	private TimeSeries categoriesSeries = new TimeSeries("Category");
+	private XYSeriesRenderer categoriesRenderer = new XYSeriesRenderer();
+	private XYMultipleSeriesDataset chartDataset = new XYMultipleSeriesDataset();
+	private XYMultipleSeriesRenderer chartRenderer = new XYMultipleSeriesRenderer();
 
 	public static final String ARG_JSON_DATA = "json_data";
 
@@ -45,24 +50,13 @@ public class HistoryGraphFragment extends Fragment {
 		View rootView = inflater.inflate(R.layout.fragment_history_graph,
 				container, false);
 
-		// Create a new graph with the JSON data
+		// Get the JSON data
 		JSONArray data = (JSONArray) getArguments().getSerializable(
 				ARG_JSON_DATA);
 		// FIXME
 		if (data == null) {
 			data = new JSONArray();
 		}
-
-		GraphView graphView = new LineGraphView(getActivity(), "History");
-		ArrayList<GraphViewData> categoryData = new ArrayList<GraphViewData>();
-		ArrayList<GraphViewData> accelAvgData = new ArrayList<GraphViewData>();
-		ArrayList<GraphViewData> gyroAvgData = new ArrayList<GraphViewData>();
-		ArrayList<GraphViewData> accelMaxData = new ArrayList<GraphViewData>();
-		ArrayList<GraphViewData> gyroMaxData = new ArrayList<GraphViewData>();
-		ArrayList<GraphViewData> accelMinData = new ArrayList<GraphViewData>();
-		ArrayList<GraphViewData> gyroMinData = new ArrayList<GraphViewData>();
-		ArrayList<GraphViewData> accelStdData = new ArrayList<GraphViewData>();
-		ArrayList<GraphViewData> gyroStdData = new ArrayList<GraphViewData>();
 
 		// Store the categories in an array to generate the labels
 		final ArrayList<String> labelsArray = new ArrayList<String>();
@@ -74,8 +68,9 @@ public class HistoryGraphFragment extends Fragment {
 			}
 		}
 
+		// Fill the dataset
+		chartDataset.addSeries(categoriesSeries);
 		for (int i = 0; i < data.size(); i++) {
-			// FIXME
 			JSONObject jsonObj = (JSONObject) data.get(i);
 			Long timestamp = (Long) jsonObj.get("timestamp");
 			String category = (String) jsonObj.get("category");
@@ -87,124 +82,68 @@ public class HistoryGraphFragment extends Fragment {
 			Double ming = (Double) jsonObj.get("ming");
 			Double stda = (Double) jsonObj.get("stda");
 			Double stdg = (Double) jsonObj.get("stdg");
-			categoryData.add(new GraphViewData(timestamp.doubleValue(),
-					labelsArray.indexOf(category)));
-			if (avga != null) {
-				accelAvgData.add(new GraphViewData(timestamp.doubleValue(),
-						avga));
-			}
-			if (avgg != null) {
-				gyroAvgData
-						.add(new GraphViewData(timestamp.doubleValue(), avgg));
-			}
-			if (maxa != null) {
-				accelMaxData.add(new GraphViewData(timestamp.doubleValue(),
-						maxa));
-			}
-			if (maxg != null) {
-				gyroMaxData
-						.add(new GraphViewData(timestamp.doubleValue(), maxg));
-			}
-			if (mina != null) {
-				accelMinData.add(new GraphViewData(timestamp.doubleValue(),
-						mina));
-			}
-			if (ming != null) {
-				gyroMinData
-						.add(new GraphViewData(timestamp.doubleValue(), ming));
-			}
-			if (stda != null) {
-				accelStdData.add(new GraphViewData(timestamp.doubleValue(),
-						stda));
-			}
-			if (stdg != null) {
-				gyroStdData
-						.add(new GraphViewData(timestamp.doubleValue(), stdg));
-			}
+
+			categoriesSeries.add(timestamp.doubleValue(),
+					labelsArray.indexOf(category));
+
 		}
 
-		// Set custom formatter for x and y axis (timestamp and category)
-		graphView.setCustomLabelFormatter(new CustomLabelFormatter() {
+		// Set the labels of the Y axis (categories)
+		for (String category : labelsArray) {
+			chartRenderer
+					.addYTextLabel(labelsArray.indexOf(category), category);
+		}
 
-			@Override
-			public String formatLabel(double value, boolean isValueX) {
-				if (isValueX) {
-					// Return human time
-					SimpleDateFormat sdfDateTime = new SimpleDateFormat(
-							"HH:mm:ss", Locale.getDefault());
-					String humanDate = sdfDateTime
-							.format(new Date((long) value));
-					return humanDate;
-				} else {
-					if (value >= labelsArray.size() || value < 0) {
-						return new String("");
-					} else {
-						return labelsArray.get((int) value);
-					}
-				}
-			}
-		});
-
-		// FIXME
-		GraphViewSeriesStyle categoryStyle = new GraphViewSeriesStyle(
-				Color.rgb(100, 00, 100), 6);
-		graphView.addSeries(new GraphViewSeries("Category", categoryStyle,
-				categoryData.toArray(new GraphViewData[categoryData.size()])));
-
-		// TODO different graph for magnitude features
-		/*
-		 * GraphViewSeriesStyle accelAvgStyle = new GraphViewSeriesStyle(
-		 * Color.rgb(180, 50, 00), 4); GraphViewSeriesStyle gyroAvgStyle = new
-		 * GraphViewSeriesStyle(Color.rgb( 90, 190, 00), 4);
-		 * GraphViewSeriesStyle accelMaxStyle = new GraphViewSeriesStyle(
-		 * Color.rgb(200, 50, 00), 4); GraphViewSeriesStyle gyroMaxStyle = new
-		 * GraphViewSeriesStyle(Color.rgb( 90, 210, 00), 4);
-		 * GraphViewSeriesStyle accelMinStyle = new GraphViewSeriesStyle(
-		 * Color.rgb(220, 50, 00), 4); GraphViewSeriesStyle gyroMinStyle = new
-		 * GraphViewSeriesStyle(Color.rgb( 90, 230, 00), 4);
-		 * GraphViewSeriesStyle accelStdStyle = new GraphViewSeriesStyle(
-		 * Color.rgb(240, 50, 00), 4); GraphViewSeriesStyle gyroStdStyle = new
-		 * GraphViewSeriesStyle(Color.rgb( 90, 250, 00), 4);
-		 * graphView.addSeries(new GraphViewSeries("avga", accelAvgStyle,
-		 * accelAvgData.toArray(new GraphViewData[accelAvgData.size()])));
-		 * graphView.addSeries(new GraphViewSeries("avgg", gyroAvgStyle,
-		 * gyroAvgData.toArray(new GraphViewData[gyroAvgData.size()])));
-		 * graphView.addSeries(new GraphViewSeries("maxa", accelMaxStyle,
-		 * accelMaxData.toArray(new GraphViewData[accelMaxData.size()])));
-		 * graphView.addSeries(new GraphViewSeries("maxg", gyroMaxStyle,
-		 * gyroMaxData.toArray(new GraphViewData[gyroMaxData.size()])));
-		 * graphView.addSeries(new GraphViewSeries("mina", accelMinStyle,
-		 * accelMinData.toArray(new GraphViewData[accelMinData.size()])));
-		 * graphView.addSeries(new GraphViewSeries("ming", gyroMinStyle,
-		 * gyroMinData.toArray(new GraphViewData[gyroMinData.size()])));
-		 * graphView.addSeries(new GraphViewSeries("stda", accelStdStyle,
-		 * accelStdData.toArray(new GraphViewData[accelStdData.size()])));
-		 * graphView.addSeries(new GraphViewSeries("stdg", gyroStdStyle,
-		 * gyroStdData.toArray(new GraphViewData[gyroStdData.size()])));
-		 */
-
-		graphView.setShowLegend(true);
-		// Convert standard text sp size to px
+		// Style the chart
+		// TODO better style
 		float textSize = (float) TypedValue.applyDimension(
-				TypedValue.COMPLEX_UNIT_SP, 14, getResources()
+				TypedValue.COMPLEX_UNIT_SP, 12, getResources()
 						.getDisplayMetrics());
-		graphView.getGraphViewStyle().setTextSize(textSize);
-		graphView.getGraphViewStyle().setNumHorizontalLabels(5);
-		if (labelsArray.size() > 1) {
-			graphView.getGraphViewStyle().setNumVerticalLabels(
-					labelsArray.size());
-		} else {
-			graphView.getGraphViewStyle().setNumVerticalLabels(3);
-		}
-		graphView.getGraphViewStyle().setHorizontalLabelsColor(Color.BLACK);
-		graphView.getGraphViewStyle().setVerticalLabelsColor(Color.BLACK);
-		graphView.setScrollable(true);
-		graphView.setScalable(true);
+		int marginSizeNormal = (int) TypedValue.applyDimension(
+				TypedValue.COMPLEX_UNIT_SP, 20, getResources()
+						.getDisplayMetrics());
+		int marginSizeLarge = (int) TypedValue.applyDimension(
+				TypedValue.COMPLEX_UNIT_SP, 50, getResources()
+						.getDisplayMetrics());
+		chartRenderer.setLabelsTextSize(textSize);
+		chartRenderer.setYLabelsAngle(-30.0f);
+		chartRenderer.setXLabelsAngle(-30.0f);
+		chartRenderer.setXLabelsColor(Color.BLACK);
+		chartRenderer.setYLabelsColor(0, Color.BLACK);
+		chartRenderer.setXLabelsAlign(Align.RIGHT);
+		chartRenderer.setYLabelsAlign(Align.RIGHT);
+		chartRenderer.setLegendTextSize(textSize);
+		chartRenderer.setFitLegend(true);
+		chartRenderer.setMargins(new int[] { marginSizeNormal, marginSizeLarge,
+				marginSizeLarge, marginSizeNormal });
+		chartRenderer.setPanEnabled(true, false);
+		chartRenderer.setZoomEnabled(true, false);
+		chartRenderer.setZoomButtonsVisible(false);
+		chartRenderer.setBackgroundColor(Color.WHITE);
+		chartRenderer.setMarginsColor(Color.WHITE);
+		chartRenderer.setGridColor(Color.BLACK);
+		chartRenderer.setPointSize(8);
+		chartRenderer.setShowGridY(true);
+		chartRenderer.setAntialiasing(true);
+		// chartRenderer.setPanLimits(new double[] { 0,
+		// categoriesSeries.getMinX(), 0, categoriesSeries.getMaxX() });
+		chartRenderer.setYLabels(labelsArray.size());
+		chartRenderer.setClickEnabled(false);
+
+		// Style the series
+		categoriesRenderer.setPointStyle(PointStyle.DIAMOND);
+		categoriesRenderer.setFillPoints(true);
+		categoriesRenderer.setColor(Color.BLACK);
+
+		// Generate the chart
+		chartRenderer.addSeriesRenderer(categoriesRenderer);
+		categoriesChart = ChartFactory.getTimeChartView(getActivity(),
+				chartDataset, chartRenderer, "HH:mm:ss");
 
 		// Add the graph to the layout
 		LinearLayout layout = (LinearLayout) rootView
 				.findViewById(R.id.graphLayout);
-		layout.addView(graphView);
+		layout.addView(categoriesChart);
 
 		return rootView;
 	}
