@@ -141,6 +141,24 @@ public class TrainingService extends Service {
 		}
 	};
 
+	// UncaughtException handler. Useful for sudden Service crashes.
+	private Thread.UncaughtExceptionHandler androidDefaultUEH;
+
+	private Thread.UncaughtExceptionHandler UEHandler = new Thread.UncaughtExceptionHandler() {
+
+		@Override
+		public void uncaughtException(Thread thread, Throwable ex) {
+			// Write current service status to shared preferences
+			if (sharedPrefs != null) {
+				sharedPrefs.edit().putBoolean("training_isrunning", false)
+						.commit();
+			}
+			
+			androidDefaultUEH.uncaughtException(thread, ex);
+		}
+
+	};
+
 	// TODO move start delay handling to TrainingActivity
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
@@ -177,6 +195,12 @@ public class TrainingService extends Service {
 
 	@Override
 	public void onCreate() {
+		super.onCreate();
+		
+		// Get the UncaughtException handlers
+		androidDefaultUEH = Thread.getDefaultUncaughtExceptionHandler();
+		Thread.setDefaultUncaughtExceptionHandler(UEHandler);
+		
 		// Get shared preferences
 		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -245,6 +269,9 @@ public class TrainingService extends Service {
 
 	@Override
 	public void onDestroy() {
+		// Write current service status to shared preferences
+		sharedPrefs.edit().putBoolean("training_isrunning", false).commit();
+
 		// Unregister screen off event listener
 		unregisterReceiver(screenOffReceiver);
 
@@ -257,9 +284,6 @@ public class TrainingService extends Service {
 		if (wakeLock.isHeld()) {
 			wakeLock.release();
 		}
-
-		// Write current service status to shared preferences
-		sharedPrefs.edit().putBoolean("training_isrunning", false).commit();
 	}
 
 	@Override
