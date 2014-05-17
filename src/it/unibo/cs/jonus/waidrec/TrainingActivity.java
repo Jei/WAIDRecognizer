@@ -2,10 +2,11 @@ package it.unibo.cs.jonus.waidrec;
 
 import java.io.File;
 import java.io.IOException;
+
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -13,11 +14,10 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -30,8 +30,8 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 public class TrainingActivity extends Activity {
-
-	private boolean serviceIsBound = false;
+	
+	private SharedPreferences sharedPrefs;
 	private boolean generating = false;
 
 	private Spinner vehicleSpinner;
@@ -59,20 +59,10 @@ public class TrainingActivity extends Activity {
 	private static final int NOTIFICATION_TRAINING_RUNNING = R.string.training_service_running;
 	private static final int ERROR_MODEL_GENERATION_IOEXCEPTION = 10;
 	private static final int ERROR_MODEL_GENERATION_EXCEPTION = 11;
-
-	private ServiceConnection trainingServiceConnection = new ServiceConnection() {
-		public void onServiceConnected(ComponentName className, IBinder service) {
-			Toast.makeText(TrainingActivity.this,
-					R.string.training_service_connected, Toast.LENGTH_SHORT)
-					.show();
-		}
-
-		public void onServiceDisconnected(ComponentName className) {
-			Toast.makeText(TrainingActivity.this,
-					R.string.training_service_disconnected, Toast.LENGTH_SHORT)
-					.show();
-		}
-	};
+	private static final int MODE_AVAILABLE = 0;
+	private static final int MODE_TRAINING = 1;
+	private static final int MODE_GENERATING = 2;
+	private static final String KEY_TRAINING_ISRUNNING = "training_isrunning";
 
 	@SuppressLint("HandlerLeak")
 	private Handler threadHandler = new Handler() {
@@ -127,22 +117,89 @@ public class TrainingActivity extends Activity {
 				break;
 			}
 
-			vehicleSpinner.setEnabled(true);
-			trainingFrequencyInput.setEnabled(true);
-			overwriteRadio.setEnabled(true);
-			appendRadio.setEnabled(true);
-			startButton.setEnabled(true);
-			modelResetButton.setEnabled(true);
-
-			stopButton.setEnabled(false);
+			// Update the UI
+			setUIMode(MODE_AVAILABLE);
 
 			generating = false;
 		}
 	};
 
+	// Runnable for model generation thread
+	private class ModelGenRunnable implements Runnable {
+		ProgressDialog dialog;
+
+		public ModelGenRunnable(ProgressDialog pd) {
+			dialog = pd;
+		}
+
+		public void run() {
+			// Prepare message for thread completion
+			Message message = new Message();
+			// Generate new model
+			try {
+				modelManager.generateModel(getFilesDir());
+				Log.v("resetModel", "model generated");
+				// Operations completed correctly, return 0
+				message.arg1 = 0;
+			} catch (IOException e) {
+				message.arg1 = ERROR_MODEL_GENERATION_IOEXCEPTION;
+				e.printStackTrace();
+			} catch (Exception e) {
+				message.arg1 = ERROR_MODEL_GENERATION_EXCEPTION;
+				e.printStackTrace();
+			}
+			if (!Thread.interrupted() && threadHandler != null) {
+				// Notify thread completion
+				message.obj = dialog;
+				threadHandler.sendMessage(message);
+			}
+
+		}
+	};
+
+	// Runnable for model reset thread
+	private class ModelResetRunnable implements Runnable {
+		ProgressDialog dialog;
+
+		public ModelResetRunnable(ProgressDialog pd) {
+			dialog = pd;
+		}
+
+		public void run() {
+			// Prepare message for thread completion
+			Message message = new Message();
+			// Reset original arff files and regenerate model
+			try {
+				modelManager.resetFromAssets(getAssets(), getFilesDir());
+				Log.v("resetModel", "assets reset");
+				modelManager.generateModel(getFilesDir());
+				Log.v("resetModel", "model generated");
+				// Operations completed correctly, return 0
+				message.arg1 = 0;
+			} catch (IOException e) {
+				message.arg1 = 1;
+				e.printStackTrace();
+			} catch (Exception e) {
+				message.arg1 = 1;
+				e.printStackTrace();
+			}
+			if (!Thread.interrupted() && threadHandler != null) {
+				// Notify thread completion
+				message.obj = dialog;
+				threadHandler.sendMessage(message);
+			}
+
+		}
+	};
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_training);
+
+		// Get shared preferences
+		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+
 		trainingFrequencyInput = (EditText) findViewById(R.id.trainingFreqInput);
 		vehicleSpinner = (Spinner) findViewById(R.id.classesSpinner);
 		overwriteRadio = (RadioButton) findViewById(R.id.overwriteRadioButton);
@@ -171,6 +228,8 @@ public class TrainingActivity extends Activity {
 		// Apply the adapter to the spinner
 		vehicleSpinner.setAdapter(adapter);
 
+		// If the training service is already running, update the UI
+
 		super.onCreate(savedInstanceState);
 	}
 
@@ -182,7 +241,10 @@ public class TrainingActivity extends Activity {
 	}
 
 	public void startTraining(View view) {
-		if (!serviceIsBound && !generating
+		boolean isServiceRunning = sharedPrefs.getBoolean(
+				KEY_TRAINING_ISRUNNING, false);
+
+		if (!isServiceRunning && !generating
 				&& trainingFrequencyInput.getText().length() != 0) {
 			// Get the selected radio button for write mode
 			int writeMode = ((RadioGroup) findViewById(R.id.modeRadioGroup))
@@ -233,19 +295,10 @@ public class TrainingActivity extends Activity {
 								break;
 							}
 
-							bindService(serviceIntent,
-									trainingServiceConnection,
-									Context.BIND_AUTO_CREATE);
-							serviceIsBound = true;
+							startService(serviceIntent);
 
-							vehicleSpinner.setEnabled(false);
-							trainingFrequencyInput.setEnabled(false);
-							overwriteRadio.setEnabled(false);
-							appendRadio.setEnabled(false);
-							startButton.setEnabled(false);
-							modelResetButton.setEnabled(false);
-
-							stopButton.setEnabled(true);
+							// Update the UI
+							setUIMode(MODE_TRAINING);
 
 							Toast.makeText(TrainingActivity.this,
 									R.string.training_service_started,
@@ -267,47 +320,10 @@ public class TrainingActivity extends Activity {
 	}
 
 	public void stopTraining(View view) {
-		// Runnable for model generation thread
-		class ModelGenRunnable implements Runnable {
-			ProgressDialog dialog;
+		boolean isServiceRunning = sharedPrefs.getBoolean(
+				KEY_TRAINING_ISRUNNING, false);
 
-			public ModelGenRunnable(ProgressDialog pd) {
-				dialog = pd;
-			}
-
-			public void run() {
-				// Prepare message for thread completion
-				Message message = new Message();
-				// Generate new model
-				try {
-					modelManager.generateModel(getFilesDir());
-					Log.v("resetModel", "model generated");
-					// Operations completed correctly, return 0
-					message.arg1 = 0;
-				} catch (IOException e) {
-					message.arg1 = ERROR_MODEL_GENERATION_IOEXCEPTION;
-					e.printStackTrace();
-				} catch (Exception e) {
-					message.arg1 = ERROR_MODEL_GENERATION_EXCEPTION;
-					e.printStackTrace();
-				}
-				if (!Thread.interrupted() && threadHandler != null) {
-					// Notify thread completion
-					message.obj = dialog;
-					threadHandler.sendMessage(message);
-				}
-
-			}
-		}
-		;
-
-		if (serviceIsBound) {
-
-			vehicleSpinner.setEnabled(true);
-			trainingFrequencyInput.setEnabled(true);
-			overwriteRadio.setEnabled(true);
-			appendRadio.setEnabled(true);
-
+		if (isServiceRunning) {
 			// Create progress dialog
 			progressDialog = new ProgressDialog(context);
 			progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
@@ -317,15 +333,13 @@ public class TrainingActivity extends Activity {
 			progressDialog.setCancelable(false);
 			progressDialog.show();
 
-			// Detach our existing connection.
-			unbindService(trainingServiceConnection);
+			// Stop the training service
 			Intent serviceIntent = new Intent(TrainingActivity.this,
 					TrainingService.class);
 			stopService(serviceIntent);
 
 			hideNotification(NOTIFICATION_TRAINING_RUNNING);
 
-			serviceIsBound = false;
 			generating = true;
 
 			// Get the selected item key from the vehicles spinner
@@ -377,44 +391,10 @@ public class TrainingActivity extends Activity {
 	}
 
 	public void resetModel(View view) {
+		boolean isServiceRunning = sharedPrefs.getBoolean(
+				KEY_TRAINING_ISRUNNING, false);
 
-		// Runnable for model reset thread
-		class ModelResetRunnable implements Runnable {
-			ProgressDialog dialog;
-
-			public ModelResetRunnable(ProgressDialog pd) {
-				dialog = pd;
-			}
-
-			public void run() {
-				// Prepare message for thread completion
-				Message message = new Message();
-				// Reset original arff files and regenerate model
-				try {
-					modelManager.resetFromAssets(getAssets(), getFilesDir());
-					Log.v("resetModel", "assets reset");
-					modelManager.generateModel(getFilesDir());
-					Log.v("resetModel", "model generated");
-					// Operations completed correctly, return 0
-					message.arg1 = 0;
-				} catch (IOException e) {
-					message.arg1 = 1;
-					e.printStackTrace();
-				} catch (Exception e) {
-					message.arg1 = 1;
-					e.printStackTrace();
-				}
-				if (!Thread.interrupted() && threadHandler != null) {
-					// Notify thread completion
-					message.obj = dialog;
-					threadHandler.sendMessage(message);
-				}
-
-			}
-		}
-		;
-
-		if (!serviceIsBound && !generating) {
+		if (!isServiceRunning && !generating) {
 			// Create progress dialog
 			final ProgressDialog progressDialog = new ProgressDialog(this);
 			progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
@@ -432,19 +412,14 @@ public class TrainingActivity extends Activity {
 			// Show a notification
 			showNotification(NOTIFICATION_GENERATING_MODEL, false);
 
-			generating = true;
+			// Update the UI
+			setUIMode(MODE_GENERATING);
 
-			// Disable all the buttons and inputs until completion
-			vehicleSpinner.setEnabled(false);
-			trainingFrequencyInput.setEnabled(false);
-			overwriteRadio.setEnabled(false);
-			appendRadio.setEnabled(false);
-			startButton.setEnabled(false);
-			stopButton.setEnabled(false);
-			modelResetButton.setEnabled(false);
+			generating = true;
 		}
 	}
 
+	// TODO switch to non deprecated methods
 	private void showNotification(int textId, boolean autoCancel) {
 		// In this sample, we'll use the same text for the ticker and the
 		// expanded notification
@@ -473,6 +448,43 @@ public class TrainingActivity extends Activity {
 
 	private void hideNotification(int textId) {
 		notificationManager.cancel(textId);
+	}
+
+	// Update the UI elements to reflect the current state of the training
+	// service
+	private void setUIMode(int mode) {
+		switch (mode) {
+		case MODE_AVAILABLE:
+			// Enable all the elements except for Training Stop
+			vehicleSpinner.setEnabled(true);
+			trainingFrequencyInput.setEnabled(true);
+			overwriteRadio.setEnabled(true);
+			appendRadio.setEnabled(true);
+			startButton.setEnabled(true);
+			modelResetButton.setEnabled(true);
+			stopButton.setEnabled(false);
+			break;
+		case MODE_TRAINING:
+			vehicleSpinner.setEnabled(false);
+			trainingFrequencyInput.setEnabled(false);
+			overwriteRadio.setEnabled(false);
+			appendRadio.setEnabled(false);
+			startButton.setEnabled(false);
+			modelResetButton.setEnabled(false);
+			stopButton.setEnabled(true);
+			break;
+		case MODE_GENERATING:
+			// Disable all the elements
+			vehicleSpinner.setEnabled(false);
+			trainingFrequencyInput.setEnabled(false);
+			overwriteRadio.setEnabled(false);
+			appendRadio.setEnabled(false);
+			startButton.setEnabled(false);
+			stopButton.setEnabled(false);
+			modelResetButton.setEnabled(false);
+			break;
+		}
+
 	}
 
 }

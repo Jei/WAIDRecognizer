@@ -13,6 +13,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Binder;
@@ -21,9 +22,12 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 public class TrainingService extends Service {
+
+	private SharedPreferences sharedPrefs;
 
 	private Context context;
 
@@ -87,8 +91,9 @@ public class TrainingService extends Service {
 				inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
 						gyroFeatures.getStandardDeviation());
 			}
-			
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(8), vehicleClass);
+
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(8),
+					vehicleClass);
 
 			// add the instance
 			trainingSet.add(inst);
@@ -136,13 +141,48 @@ public class TrainingService extends Service {
 		}
 	};
 
+	// TODO move start delay handling to TrainingActivity
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
+		Bundle bundle = intent.getExtras();
+		if (bundle == null) {
+			this.stopSelf();
+		}
+		vehicleClass = bundle.getString("class");
+		samplingRate = bundle.getInt("frequency");
+		append = bundle.getBoolean("append");
+
+		// Reset temp file according to write mode
+		try {
+			modelManager.resetTempFile(getFilesDir(), append);
+		} catch (IOException e) {
+			Log.v("TrainingService", "Error while resetting temp file");
+			e.printStackTrace();
+			stopSelf();
+		}
+
+		// start sensor reading after several seconds
+		startHandler.postDelayed(new Runnable() {
+			@Override
+			public void run() {
+				// launch the execution of the delayed classification task
+				trainingHandler.postDelayed(trainingRunnable, samplingRate);
+				accelListener.startGenerating();
+				gyroListener.startGenerating();
+			}
+		}, sensorStartDelay * 1000);
+
 		return START_STICKY;
 	}
 
 	@Override
 	public void onCreate() {
+		// Get shared preferences
+		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+		// Write current service status to shared preferences
+		sharedPrefs.edit().putBoolean("training_isrunning", true).commit();
+
 		modelManager = new ModelManager();
 
 		context = this;
@@ -197,7 +237,7 @@ public class TrainingService extends Service {
 
 		// Register sensor listeners
 		registerSensors();
-		
+
 		trainingHandler = new Handler();
 		startHandler = new Handler();
 
@@ -217,38 +257,13 @@ public class TrainingService extends Service {
 		if (wakeLock.isHeld()) {
 			wakeLock.release();
 		}
+
+		// Write current service status to shared preferences
+		sharedPrefs.edit().putBoolean("training_isrunning", false).commit();
 	}
 
 	@Override
 	public IBinder onBind(Intent intent) {
-		Bundle bundle = intent.getExtras();
-		if (bundle == null) {
-			this.stopSelf();
-		}
-		vehicleClass = bundle.getString("class");
-		samplingRate = bundle.getInt("frequency");
-		append = bundle.getBoolean("append");
-
-		// Reset temp file according to write mode
-		try {
-			modelManager.resetTempFile(getFilesDir(), append);
-		} catch (IOException e) {
-			Log.v("TrainingService", "Error while resetting temp file");
-			e.printStackTrace();
-			stopSelf();
-		}
-
-		// start sensor reading after several seconds
-		startHandler.postDelayed(new Runnable() {
-			@Override
-			public void run() {
-				// launch the execution of the delayed classification task
-				trainingHandler.postDelayed(trainingRunnable,
-						samplingRate);
-				accelListener.startGenerating();
-				gyroListener.startGenerating();
-			}
-		}, sensorStartDelay * 1000);
 
 		return mBinder;
 	}

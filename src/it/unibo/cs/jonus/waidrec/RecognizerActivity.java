@@ -265,6 +265,7 @@ public class RecognizerActivity extends Activity {
 		return true;
 	}
 
+	// TODO switch to non deprecated methods
 	private void showNotification(int textId, boolean autoCancel) {
 		// In this sample, we'll use the same text for the ticker and the
 		// expanded notification

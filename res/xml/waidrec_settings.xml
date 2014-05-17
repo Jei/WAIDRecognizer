@@ -10,4 +10,7 @@
         <Preference 
             android:defaultValue="false"
             android:key="recognizer_isrunning"/>
+        <Preference 
+            android:defaultValue="false"
+            android:key="training_isrunning"/>
     </PreferenceScreen>
