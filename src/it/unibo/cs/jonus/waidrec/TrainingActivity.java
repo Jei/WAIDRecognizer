@@ -2,6 +2,8 @@ package it.unibo.cs.jonus.waidrec;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -34,6 +36,7 @@ public class TrainingActivity extends Activity {
 	private SharedPreferences sharedPrefs;
 	private boolean generating = false;
 
+	private RadioGroup writeModeGroup;
 	private Spinner vehicleSpinner;
 	private EditText trainingFrequencyInput;
 	private RadioButton overwriteRadio;
@@ -63,6 +66,8 @@ public class TrainingActivity extends Activity {
 	private static final int MODE_TRAINING = 1;
 	private static final int MODE_GENERATING = 2;
 	private static final String KEY_TRAINING_ISRUNNING = "training_isrunning";
+	private static final String KEY_TRAINING_CURRENT_VEHICLE = "training_current_vehicle";
+	private static final String KEY_TRAINING_CURRENT_WRITE_MODE = "training_current_write_mode";
 
 	@SuppressLint("HandlerLeak")
 	private Handler threadHandler = new Handler() {
@@ -200,6 +205,7 @@ public class TrainingActivity extends Activity {
 		// Get shared preferences
 		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 
+		writeModeGroup = (RadioGroup) findViewById(R.id.modeRadioGroup);
 		trainingFrequencyInput = (EditText) findViewById(R.id.trainingFreqInput);
 		vehicleSpinner = (Spinner) findViewById(R.id.classesSpinner);
 		overwriteRadio = (RadioButton) findViewById(R.id.overwriteRadioButton);
@@ -207,7 +213,6 @@ public class TrainingActivity extends Activity {
 		startButton = (Button) findViewById(R.id.startTrainingButton);
 		stopButton = (Button) findViewById(R.id.stopTrainingButton);
 		modelResetButton = (Button) findViewById(R.id.resetModelButton);
-
 		stopButton.setEnabled(false);
 
 		// Get context for general use
@@ -228,14 +233,34 @@ public class TrainingActivity extends Activity {
 		// Apply the adapter to the spinner
 		vehicleSpinner.setAdapter(adapter);
 
+		// Restore UI elements from the saved state
+		if (savedInstanceState != null) {
+			vehicleSpinner.setSelection(savedInstanceState
+					.getInt("selectedVehicle"));
+			writeModeGroup
+					.check(savedInstanceState.getInt("selectedWriteMode"));
+		}
+
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+
 		// If the training service is already running, update the UI
 		boolean isServiceRunning = sharedPrefs.getBoolean(
 				KEY_TRAINING_ISRUNNING, false);
 		if (isServiceRunning) {
 			setUIMode(MODE_TRAINING);
+		} else {
+			setUIMode(MODE_AVAILABLE);
 		}
-
-		super.onCreate(savedInstanceState);
+		List<String> vehiclesArray = Arrays.asList(getResources()
+				.getStringArray(R.array.default_classes_keys));
+		vehicleSpinner.setSelection(vehiclesArray.indexOf(sharedPrefs
+				.getString(KEY_TRAINING_CURRENT_VEHICLE, "idle")));
+		writeModeGroup.check(sharedPrefs.getInt(
+				KEY_TRAINING_CURRENT_WRITE_MODE, R.id.appendRadioButton));
 	}
 
 	@Override
@@ -280,9 +305,17 @@ public class TrainingActivity extends Activity {
 							String vehicle = getResources().getStringArray(
 									R.array.default_classes_keys)[vehicleSpinner
 									.getSelectedItemPosition()];
+							sharedPrefs
+									.edit()
+									.putString(KEY_TRAINING_CURRENT_VEHICLE,
+											vehicle).commit();
 							// Get the selected radio button for write mode
 							int writeMode = ((RadioGroup) findViewById(R.id.modeRadioGroup))
 									.getCheckedRadioButtonId();
+							sharedPrefs
+									.edit()
+									.putInt(KEY_TRAINING_CURRENT_WRITE_MODE,
+											writeMode).commit();
 							// Create and bind to the new TrainingService
 							Intent serviceIntent = new Intent(
 									TrainingActivity.this,
@@ -347,13 +380,11 @@ public class TrainingActivity extends Activity {
 
 			generating = true;
 
-			// Get the selected item key from the vehicles spinner
-			String vehicle = getResources().getStringArray(
-					R.array.default_classes_keys)[vehicleSpinner
-					.getSelectedItemPosition()];
-			// Get the selected radio button for write mode
-			int writeMode = ((RadioGroup) findViewById(R.id.modeRadioGroup))
-					.getCheckedRadioButtonId();
+			// Get the write mode and the vehicle from the preferences
+			String vehicle = sharedPrefs.getString(
+					KEY_TRAINING_CURRENT_VEHICLE, "idle");
+			int writeMode = sharedPrefs.getInt(KEY_TRAINING_CURRENT_WRITE_MODE,
+					R.id.appendRadioButton);
 
 			// Overwrite old vehicle file with the temp file
 			String tempFileName = getFilesDir() + "/temp.arff";
@@ -391,6 +422,9 @@ public class TrainingActivity extends Activity {
 			asyncThread.start();
 
 			showNotification(NOTIFICATION_GENERATING_MODEL, false);
+			
+			//XXX Set the TrainingService preference to false
+			sharedPrefs.edit().putBoolean(KEY_TRAINING_ISRUNNING, false).commit();
 
 		}
 	}
@@ -434,10 +468,12 @@ public class TrainingActivity extends Activity {
 		Notification notification = new Notification(R.drawable.ic_launcher,
 				text, System.currentTimeMillis());
 
-		// The PendingIntent to launch our activity if the user selects this
-		// notification
+		// Add a pending intent to open the activity
+		Intent trainingIntent = new Intent(this, TrainingActivity.class);
+		trainingIntent.setAction(Intent.ACTION_MAIN);
+		trainingIntent.addCategory(Intent.CATEGORY_LAUNCHER);
 		PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
-				new Intent(this, TrainingActivity.class), 0);
+				trainingIntent, 0);
 
 		// Set the info for the views that show in the notification panel.
 		notification.setLatestEventInfo(this,
