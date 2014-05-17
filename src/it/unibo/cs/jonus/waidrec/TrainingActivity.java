@@ -30,7 +30,7 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 public class TrainingActivity extends Activity {
-	
+
 	private SharedPreferences sharedPrefs;
 	private boolean generating = false;
 
@@ -229,6 +229,11 @@ public class TrainingActivity extends Activity {
 		vehicleSpinner.setAdapter(adapter);
 
 		// If the training service is already running, update the UI
+		boolean isServiceRunning = sharedPrefs.getBoolean(
+				KEY_TRAINING_ISRUNNING, false);
+		if (isServiceRunning) {
+			setUIMode(MODE_TRAINING);
+		}
 
 		super.onCreate(savedInstanceState);
 	}
