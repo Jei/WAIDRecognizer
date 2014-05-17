@@ -13,4 +13,10 @@
         <Preference 
             android:defaultValue="false"
             android:key="training_isrunning"/>
+        <Preference
+            android:defaultValue="idle"
+            android:key="training_current_vehicle"/>
+        <Preference
+            android:defaultValue="@id/appendRadioButton"
+            android:key="training_current_write_mode"/>
     </PreferenceScreen>
