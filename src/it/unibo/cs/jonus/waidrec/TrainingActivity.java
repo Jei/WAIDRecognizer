@@ -86,7 +86,7 @@ public class TrainingActivity extends Activity {
 				Toast.makeText(TrainingActivity.this, R.string.model_generated,
 						Toast.LENGTH_SHORT).show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
-				showNotification(NOTIFICATION_MODEL_GENERATED, true);
+				showNotification(NOTIFICATION_MODEL_GENERATED, true, false);
 
 				break;
 			case ERROR_MODEL_GENERATION_IOEXCEPTION:
@@ -97,7 +97,7 @@ public class TrainingActivity extends Activity {
 						.show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
 				showNotification(NOTIFICATION_MODEL_GENERATION_IOEXCEPTION,
-						true);
+						true, false);
 
 				break;
 			case ERROR_MODEL_GENERATION_EXCEPTION:
@@ -107,7 +107,7 @@ public class TrainingActivity extends Activity {
 								getText(NOTIFICATION_MODEL_GENERATION_EXCEPTION))
 						.show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
-				showNotification(NOTIFICATION_MODEL_GENERATION_EXCEPTION, true);
+				showNotification(NOTIFICATION_MODEL_GENERATION_EXCEPTION, true, false);
 
 				break;
 			default:
@@ -117,7 +117,7 @@ public class TrainingActivity extends Activity {
 								getText(NOTIFICATION_MODEL_GENERATION_ERROR))
 						.show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
-				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true);
+				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true, false);
 
 				break;
 			}
@@ -343,7 +343,7 @@ public class TrainingActivity extends Activity {
 									Toast.LENGTH_SHORT).show();
 
 							showNotification(NOTIFICATION_TRAINING_RUNNING,
-									false);
+									false, true);
 						}
 					});
 			confirmDialog.setNegativeButton(android.R.string.cancel,
@@ -421,10 +421,11 @@ public class TrainingActivity extends Activity {
 			asyncThread = new Thread(null, runnable, "ModelGen", 204800);
 			asyncThread.start();
 
-			showNotification(NOTIFICATION_GENERATING_MODEL, false);
-			
-			//XXX Set the TrainingService preference to false
-			sharedPrefs.edit().putBoolean(KEY_TRAINING_ISRUNNING, false).commit();
+			showNotification(NOTIFICATION_GENERATING_MODEL, false, true);
+
+			// XXX Set the TrainingService preference to false
+			sharedPrefs.edit().putBoolean(KEY_TRAINING_ISRUNNING, false)
+					.commit();
 
 		}
 	}
@@ -449,7 +450,7 @@ public class TrainingActivity extends Activity {
 			asyncThread.start();
 
 			// Show a notification
-			showNotification(NOTIFICATION_GENERATING_MODEL, false);
+			showNotification(NOTIFICATION_GENERATING_MODEL, false, true);
 
 			// Update the UI
 			setUIMode(MODE_GENERATING);
@@ -458,32 +459,25 @@ public class TrainingActivity extends Activity {
 		}
 	}
 
-	// TODO switch to non deprecated methods
-	private void showNotification(int textId, boolean autoCancel) {
-		// In this sample, we'll use the same text for the ticker and the
-		// expanded notification
+	private void showNotification(int textId, boolean autoCancel, boolean onGoing) {
 		CharSequence text = getText(textId);
+		CharSequence title = getText(R.string.training_service_label);
 
-		// Set the icon, scrolling text and timestamp
-		Notification notification = new Notification(R.drawable.ic_launcher,
-				text, System.currentTimeMillis());
-
-		// Add a pending intent to open the activity
+		// Create a pending intent to open the activity
 		Intent trainingIntent = new Intent(this, TrainingActivity.class);
 		trainingIntent.setAction(Intent.ACTION_MAIN);
 		trainingIntent.addCategory(Intent.CATEGORY_LAUNCHER);
 		PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
 				trainingIntent, 0);
 
-		// Set the info for the views that show in the notification panel.
-		notification.setLatestEventInfo(this,
-				getText(R.string.training_service_label), text, contentIntent);
+		// Build the notification
+		@SuppressWarnings("deprecation")
+		Notification notification = new Notification.Builder(this)
+				.setSmallIcon(R.drawable.ic_launcher).setContentText(text)
+				.setContentTitle(title).setContentIntent(contentIntent)
+				.setAutoCancel(autoCancel).setOngoing(onGoing).getNotification();
 
-		if (autoCancel) {
-			notification.flags |= Notification.FLAG_AUTO_CANCEL;
-		}
-
-		// Send the notification.
+		// Send the notification
 		notificationManager.notify(textId, notification);
 	}
 
@@ -491,8 +485,7 @@ public class TrainingActivity extends Activity {
 		notificationManager.cancel(textId);
 	}
 
-	// Update the UI elements to reflect the current state of the training
-	// service
+	// Update the UI to reflect the current state of the training service
 	private void setUIMode(int mode) {
 		switch (mode) {
 		case MODE_AVAILABLE:

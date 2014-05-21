@@ -84,7 +84,7 @@ public class RecognizerActivity extends Activity {
 				Toast.makeText(RecognizerActivity.this,
 						R.string.model_generated, Toast.LENGTH_SHORT).show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
-				showNotification(NOTIFICATION_MODEL_GENERATED, true);
+				showNotification(NOTIFICATION_MODEL_GENERATED, true, false);
 
 			} else {
 				new AlertDialog.Builder(context)
@@ -93,7 +93,7 @@ public class RecognizerActivity extends Activity {
 								getText(NOTIFICATION_MODEL_GENERATION_ERROR))
 						.show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
-				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true);
+				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true, false);
 
 			}
 			
@@ -185,7 +185,7 @@ public class RecognizerActivity extends Activity {
 			asyncThread = new Thread(null, runnable, "ModelReset", 204800);
 			asyncThread.start();
 			generating = true;
-			showNotification(NOTIFICATION_GENERATING_MODEL, false);
+			showNotification(NOTIFICATION_GENERATING_MODEL, false, true);
 		}
 
 		// Set initial classification
@@ -265,30 +265,25 @@ public class RecognizerActivity extends Activity {
 		return true;
 	}
 
-	// TODO switch to non deprecated methods
-	private void showNotification(int textId, boolean autoCancel) {
-		// In this sample, we'll use the same text for the ticker and the
-		// expanded notification
+	private void showNotification(int textId, boolean autoCancel, boolean onGoing) {
 		CharSequence text = getText(textId);
+		CharSequence title = getText(R.string.recognizer_service_name);
 
-		// Set the icon, scrolling text and timestamp
-		Notification notification = new Notification(R.drawable.ic_launcher,
-				text, System.currentTimeMillis());
-
-		// The PendingIntent to launch our activity if the user selects this
-		// notification
+		// Create a pending intent to open the activity
+		Intent trainingIntent = new Intent(this, TrainingActivity.class);
+		trainingIntent.setAction(Intent.ACTION_MAIN);
+		trainingIntent.addCategory(Intent.CATEGORY_LAUNCHER);
 		PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
-				new Intent(this, RecognizerActivity.class), 0);
+				trainingIntent, 0);
 
-		// Set the info for the views that show in the notification panel.
-		notification.setLatestEventInfo(this,
-				getText(R.string.recognizer_service_name), text, contentIntent);
+		// Build the notification
+		@SuppressWarnings("deprecation")
+		Notification notification = new Notification.Builder(this)
+				.setSmallIcon(R.drawable.ic_launcher).setContentText(text)
+				.setContentTitle(title).setContentIntent(contentIntent)
+				.setAutoCancel(autoCancel).setOngoing(onGoing).getNotification();
 
-		if (autoCancel) {
-			notification.flags |= Notification.FLAG_AUTO_CANCEL;
-		}
-
-		// Send the notification.
+		// Send the notification
 		notificationManager.notify(textId, notification);
 	}
 
@@ -357,7 +352,7 @@ public class RecognizerActivity extends Activity {
 				stopServiceButton.setEnabled(true);
 
 				// Show persistent notification
-				showNotification(NOTIFICATION_RECOGNIZER_STARTED, false);
+				showNotification(NOTIFICATION_RECOGNIZER_STARTED, false, true);
 			} else {
 				Toast.makeText(RecognizerActivity.this,
 						R.string.error_isgenerating, Toast.LENGTH_SHORT).show();
