@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <EditTextPreference
+        android:defaultValue="5"
+        android:inputType="number"
+        android:key="pref_rec_sampling_delay"
+        android:summary="@string/pref_sampling_delay_desc"
+        android:title="@string/pref_sampling_delay_title" />
+
+</PreferenceScreen>

@@ -22,14 +22,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.ContentObserver;
 import android.database.Cursor;
-import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -45,7 +43,6 @@ public class RecognizerActivity extends Activity {
 	private Thread asyncThread = null;
 
 	private Handler contentProviderHandler = new Handler();
-	private EditText samplingRateInput;
 	private ListView historyView;
 	private ArrayList<Evaluation> evaluationsList;
 
@@ -54,7 +51,7 @@ public class RecognizerActivity extends Activity {
 	private ImageView carView;
 	private ImageView trainView;
 	private ImageView idleView;
-	
+
 	private Button startServiceButton;
 	private Button stopServiceButton;
 
@@ -93,10 +90,11 @@ public class RecognizerActivity extends Activity {
 								getText(NOTIFICATION_MODEL_GENERATION_ERROR))
 						.show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
-				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true, false);
+				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true,
+						false);
 
 			}
-			
+
 			generating = false;
 		}
 	};
@@ -120,7 +118,7 @@ public class RecognizerActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_recognizer);
-		
+
 		// Get shared preferences
 		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -191,9 +189,6 @@ public class RecognizerActivity extends Activity {
 		// Set initial classification
 		currentClassification = "none";
 
-		// Set input fields
-		samplingRateInput = (EditText) findViewById(R.id.samplingRateInput);
-
 		// Set classifications images
 		noneView = (ImageView) findViewById(R.id.noneView);
 		walkingView = (ImageView) findViewById(R.id.walkingView);
@@ -212,13 +207,13 @@ public class RecognizerActivity extends Activity {
 				.setAdapter(new HistoryListAdapter(context, evaluationsList));
 		historyView.setEmptyView(findViewById(R.id.emptyView));
 		historyView.setTranscriptMode(ListView.TRANSCRIPT_MODE_ALWAYS_SCROLL);
-		
+
 		// Set start/stop service buttons
 		startServiceButton = (Button) findViewById(R.id.serviceStart);
 		stopServiceButton = (Button) findViewById(R.id.serviceStop);
 		startServiceButton.setEnabled(true);
 		stopServiceButton.setEnabled(false);
-		
+
 		// Check if RecognizerService is already running
 		if (sharedPrefs.getBoolean("recognizer_isrunning", false)) {
 			startProvider(startServiceButton);
@@ -229,13 +224,13 @@ public class RecognizerActivity extends Activity {
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.recognizer, menu);
-		
+
 		return true;
 	}
 
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
-		
+
 		return true;
 	}
 
@@ -258,6 +253,11 @@ public class RecognizerActivity extends Activity {
 			Intent historyActivity = new Intent(context, HistoryActivity.class);
 			startActivity(historyActivity);
 			break;
+		case R.id.action_settings:
+			Intent settingsActivity = new Intent(context,
+					RecognizerSettingsActivity.class);
+			startActivity(settingsActivity);
+			break;
 		default:
 			break;
 		}
@@ -265,7 +265,8 @@ public class RecognizerActivity extends Activity {
 		return true;
 	}
 
-	private void showNotification(int textId, boolean autoCancel, boolean onGoing) {
+	private void showNotification(int textId, boolean autoCancel,
+			boolean onGoing) {
 		CharSequence text = getText(textId);
 		CharSequence title = getText(R.string.recognizer_service_name);
 
@@ -281,7 +282,8 @@ public class RecognizerActivity extends Activity {
 		Notification notification = new Notification.Builder(this)
 				.setSmallIcon(R.drawable.ic_launcher).setContentText(text)
 				.setContentTitle(title).setContentIntent(contentIntent)
-				.setAutoCancel(autoCancel).setOngoing(onGoing).getNotification();
+				.setAutoCancel(autoCancel).setOngoing(onGoing)
+				.getNotification();
 
 		// Send the notification
 		notificationManager.notify(textId, notification);
@@ -320,46 +322,33 @@ public class RecognizerActivity extends Activity {
 	// Button handler for "Start Provider"
 	public void startProvider(View view) {
 
-		if (samplingRateInput.getText().length() != 0) {
-			if (!generating) {
-				// Get sampling rate and history length from input
-				int sampling = Integer.parseInt(samplingRateInput.getText()
-						.toString());
+		if (!generating) {
+			// Clear long term history
+			evaluationsList.clear();
+			@SuppressWarnings("unchecked")
+			ArrayAdapter<Evaluation> adapter = (ArrayAdapter<Evaluation>) historyView
+					.getAdapter();
+			adapter.notifyDataSetChanged();
 
-				// Clear long term history
-				evaluationsList.clear();
-				@SuppressWarnings("unchecked")
-				ArrayAdapter<Evaluation> adapter = (ArrayAdapter<Evaluation>) historyView
-						.getAdapter();
-				adapter.notifyDataSetChanged();
+			// Start service with startService to keep it running
+			// independently
+			// startService does nothing if the service is already running
+			Intent intent = new Intent(RecognizerActivity.this,
+					RecognizerService.class);
+			startService(intent);
 
-				samplingRateInput.setEnabled(false);
-				samplingRateInput.setInputType(InputType.TYPE_NULL);
+			// Start listening for changes to the provider
+			registerContentObserver();
 
-				// Start service with startService to keep it running
-				// independently
-				// startService does nothing if the service is already running
-				Intent intent = new Intent(RecognizerActivity.this,
-						RecognizerService.class);
-				intent.putExtra("sampling", sampling);
-				startService(intent);
+			// Set start/stop buttons
+			startServiceButton.setEnabled(false);
+			stopServiceButton.setEnabled(true);
 
-				// Start listening for changes to the provider
-				registerContentObserver();
-				
-				// Set start/stop buttons
-				startServiceButton.setEnabled(false);
-				stopServiceButton.setEnabled(true);
-
-				// Show persistent notification
-				showNotification(NOTIFICATION_RECOGNIZER_STARTED, false, true);
-			} else {
-				Toast.makeText(RecognizerActivity.this,
-						R.string.error_isgenerating, Toast.LENGTH_SHORT).show();
-			}
+			// Show persistent notification
+			showNotification(NOTIFICATION_RECOGNIZER_STARTED, false, true);
 		} else {
-			Toast.makeText(RecognizerActivity.this, R.string.error_empty_field,
-					Toast.LENGTH_SHORT).show();
+			Toast.makeText(RecognizerActivity.this,
+					R.string.error_isgenerating, Toast.LENGTH_SHORT).show();
 		}
 
 	}
@@ -368,7 +357,7 @@ public class RecognizerActivity extends Activity {
 	public void stopProvider(View view) {
 		unregisterContentObserver();
 		Context context = view.getContext();
-		
+
 		Intent service = new Intent(context, RecognizerService.class);
 		stopService(service);
 
@@ -378,10 +367,6 @@ public class RecognizerActivity extends Activity {
 		carView.setVisibility(View.INVISIBLE);
 		trainView.setVisibility(View.INVISIBLE);
 		idleView.setVisibility(View.INVISIBLE);
-
-		// Set input values editable
-		samplingRateInput.setEnabled(true);
-		samplingRateInput.setInputType(InputType.TYPE_CLASS_NUMBER);
 
 		// Set current classification to none
 		currentClassification = "none";
@@ -397,7 +382,7 @@ public class RecognizerActivity extends Activity {
 			Log.v("TrainingService", "Error while overwriting vehicle file");
 			e.printStackTrace();
 		}
-		
+
 		// Set start/stop buttons
 		startServiceButton.setEnabled(true);
 		stopServiceButton.setEnabled(false);

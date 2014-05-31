@@ -1,23 +1,24 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
 
-    <!--<item
+    <item
         android:id="@+id/action_settings"
         android:orderInCategory="400"
-        android:title="@string/action_settings"/>-->
-    <item 
+        android:showAsAction="never"
+        android:title="@string/action_settings"/>
+    <item
         android:id="@+id/action_training"
-        android:title="@string/training"
         android:orderInCategory="100"
-        android:showAsAction="never"/>
+        android:showAsAction="never"
+        android:title="@string/training"/>
     <item
         android:id="@+id/action_magnitude"
-        android:title="@string/magnitude"
         android:orderInCategory="200"
-        android:showAsAction="never"/>
+        android:showAsAction="never"
+        android:title="@string/magnitude"/>
     <item
         android:id="@+id/action_history"
-        android:title="@string/history"
         android:orderInCategory="300"
-        android:showAsAction="never"/>
+        android:showAsAction="never"
+        android:title="@string/history"/>
 
 </menu>

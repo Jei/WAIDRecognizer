@@ -25,11 +25,8 @@
     <string name="history_empty">No Item</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>
-    <string name="sampling_rate_desc">Sampling rate:</string>
-    <string name="history_length_desc">History length:</string>
-    <string name="default_history_length">5</string>
-    <string name="default_sampling_rate">5</string>
-    <string name="seconds">seconds</string>
+    <string name="pref_sampling_delay_title">Sampling delay</string>
+    <string name="pref_sampling_delay_desc">The number of seconds between each evaluation</string>
     <string name="temp_description">Temporary Viewer</string>
     <string name="training">Training</string>
     <string name="training_service_name">Training Service</string>
@@ -48,6 +45,9 @@
     <string name="training_confirm_append">This will modify the existing measurements for this vehicle. Continue?</string>
     <string name="start_training_button">Start Training</string>
     <string name="stop_training_button">Stop Training</string>
+    <string name="title_activity_recognizer_settings">Recognizer Settings</string>
+    <string name="sampling_delay_set_max">Maximum delay limited to </string>
+    <string name="sampling_delay_set_min">minimum delay limited to </string>
 
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>

@@ -74,6 +74,14 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="it.unibo.cs.jonus.waidrec.RecognizerActivity" />
         </activity>
+        <activity
+            android:name="it.unibo.cs.jonus.waidrec.RecognizerSettingsActivity"
+            android:label="@string/title_activity_recognizer_settings"
+            android:parentActivityName="it.unibo.cs.jonus.waidrec.RecognizerActivity" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="it.unibo.cs.jonus.waidrec.RecognizerActivity" />
+        </activity>
     </application>
 
 </manifest>

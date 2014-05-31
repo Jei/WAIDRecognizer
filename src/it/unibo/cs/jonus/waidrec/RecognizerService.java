@@ -43,7 +43,7 @@ public class RecognizerService extends Service {
 	Timer testEvaluationTimer;
 
 	// sampling rate is set to max until the service is bound to the activity
-	private int samplingRate = Integer.MAX_VALUE;
+	private int samplingDelay = Integer.MAX_VALUE;
 	private Boolean firstStart = true;
 
 	private ModelManager modelManager;
@@ -189,7 +189,7 @@ public class RecognizerService extends Service {
 
 			// Reset delayed runnable
 			classificationHandler.postDelayed(classificationRunnable,
-					samplingRate * 1000);
+					samplingDelay * 1000);
 		}
 	};
 
@@ -320,11 +320,6 @@ public class RecognizerService extends Service {
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		// Set sampling rate
-		Bundle bundle = intent.getExtras();
-		if (bundle == null) {
-			this.stopSelf();
-		}
 		if (firstStart) {
 			// start history session
 			try {
@@ -335,10 +330,12 @@ public class RecognizerService extends Service {
 			}
 
 			// launch the execution of the delayed classification task
-			samplingRate = bundle.getInt("sampling");
+			String sdString = sharedPrefs.getString(
+					RecognizerSettingsActivity.KEY_REC_SAMPLING_DELAY, "5");
+			samplingDelay = Integer.parseInt(sdString);
 			classificationHandler = new Handler();
 			classificationHandler.postDelayed(classificationRunnable,
-					samplingRate * 1000);
+					samplingDelay * 1000);
 			firstStart = false;
 		}
 
