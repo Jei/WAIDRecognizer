@@ -270,11 +270,11 @@ public class RecognizerActivity extends Activity {
 		CharSequence title = getText(R.string.recognizer_service_name);
 
 		// Create a pending intent to open the activity
-		Intent trainingIntent = new Intent(this, TrainingActivity.class);
-		trainingIntent.setAction(Intent.ACTION_MAIN);
-		trainingIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+		Intent recognizerIntent = new Intent(this, RecognizerActivity.class);
+		recognizerIntent.setAction(Intent.ACTION_MAIN);
+		recognizerIntent.addCategory(Intent.CATEGORY_LAUNCHER);
 		PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
-				trainingIntent, 0);
+				recognizerIntent, 0);
 
 		// Build the notification
 		@SuppressWarnings("deprecation")
