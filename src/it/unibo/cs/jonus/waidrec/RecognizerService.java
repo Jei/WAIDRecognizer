@@ -1,18 +1,10 @@
 package it.unibo.cs.jonus.waidrec;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import weka.core.Attribute;
-import weka.core.FastVector;
-import weka.core.Instance;
-import weka.core.Instances;
-import weka.classifiers.trees.RandomForest;
-import android.app.AlertDialog;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -20,15 +12,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.hardware.Sensor;
-import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
-import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.Toast;
@@ -41,20 +30,16 @@ public class RecognizerService extends Service {
 	TimerTask testEvaluationTask;
 	Timer testEvaluationTimer;
 
-	// sampling rate is set to max until the service is bound to the activity
-	private int samplingDelay = Integer.MAX_VALUE;
-	private Boolean firstStart = true;
-
-	private ModelManager modelManager;
-
 	private final IBinder mBinder = new MyBinder();
 
 	private PowerManager powerManager;
 	private WakeLock wakeLock;
 	private static final int SCREEN_OFF_RECEIVER_DELAY = 500;
 
+	private VehicleManager vehicleManager;
+
 	// Broadcast receiver used to listen for "screen off" event
-	public BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
+	private BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 
@@ -64,8 +49,8 @@ public class RecognizerService extends Service {
 
 			Runnable runnable = new Runnable() {
 				public void run() {
-					unregisterSensors();
-					registerSensors();
+					vehicleManager.unregisterVehicleObserver();
+					vehicleManager.registerVehicleObserver(vehicleObserver);
 				}
 			};
 
@@ -73,124 +58,24 @@ public class RecognizerService extends Service {
 		}
 	};
 
-	long lastWindowExpire;
+	private VehicleObserver vehicleObserver = new VehicleObserver() {
 
-	private Instances isTestingSet;
-	private FastVector fvWekaAttributes;
-	private Context context;
-
-	// Runnable for model deserialization
-	private Runnable deserializationRunnable = new Runnable() {
-
-		public void run() {
-			try {
-				classifier = (RandomForest) weka.core.SerializationHelper
-						.read(context.openFileInput("randomforest.model"));
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-	};
-
-	private SensorManager sm;
-
-	RandomForest classifier;
-
-	private MagnitudeListener accelListener = new MagnitudeListener(
-			MagnitudeListener.READING_DELAY_NORMAL);
-	private MagnitudeListener gyroListener = new MagnitudeListener(
-			MagnitudeListener.READING_DELAY_NORMAL);
-
-	private Handler classificationHandler;
-
-	private HistoryManager historyManager;
-
-	// Runnable for vehicle classification
-	private Runnable classificationRunnable = new Runnable() {
 		@Override
-		public void run() {
-			// Generate the sets of features
-			MagnitudeFeatures accelFeatures = accelListener.getFeatures();
-			MagnitudeFeatures gyroFeatures = gyroListener.getFeatures();
-
-			// Create the instance
-			Instance inst = new Instance(9);
-			for (int i = 0; i < 9; i++) {
-				inst.setMissing((Attribute) fvWekaAttributes.elementAt(i));
-			}
-
-			if (accelFeatures != null) {
-				inst.setValue((Attribute) fvWekaAttributes.elementAt(0),
-						accelFeatures.getAverage());
-				inst.setValue((Attribute) fvWekaAttributes.elementAt(2),
-						accelFeatures.getMaximum());
-				inst.setValue((Attribute) fvWekaAttributes.elementAt(4),
-						accelFeatures.getMinimum());
-				inst.setValue((Attribute) fvWekaAttributes.elementAt(6),
-						accelFeatures.getStandardDeviation());
-			}
-			if (gyroFeatures != null) {
-				inst.setValue((Attribute) fvWekaAttributes.elementAt(1),
-						gyroFeatures.getAverage());
-				inst.setValue((Attribute) fvWekaAttributes.elementAt(3),
-						gyroFeatures.getMaximum());
-				inst.setValue((Attribute) fvWekaAttributes.elementAt(5),
-						gyroFeatures.getMinimum());
-				inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
-						gyroFeatures.getStandardDeviation());
-			}
-
-			// add the instance
-			isTestingSet.add(inst);
-
-			// do classification
-			double clsLabel = 0;
-			try {
-				clsLabel = classifier
-						.classifyInstance(isTestingSet.instance(0));
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			isTestingSet.instance(0).setClassValue(clsLabel);
-
-			// clear readings arrays
-			gyroListener.clearMagnitudes();
-			accelListener.clearMagnitudes();
-
-			String classification = isTestingSet.instance(0).stringValue(8);
-
-			Long currentTime = System.currentTimeMillis();
-
-			// send evaluation to content provider
-			sendEvaluation(classification, currentTime);
+		public void onNewInstance(VehicleInstance instance) {
+			// Send evaluation to content provider
+			sendEvaluation(instance.getCategory(), instance.getTimestamp());
 
 			// Write evaluation to history
 			HistoryItem newItem = new HistoryItem();
-			newItem.setTimestamp(currentTime);
-			newItem.setCategory(classification);
-			newItem.setAccelFeatures(accelFeatures);
-			newItem.setGyroFeatures(gyroFeatures);
+			newItem.setTimestamp(instance.getTimestamp());
+			newItem.setCategory(instance.getCategory());
+			newItem.setAccelFeatures(instance.getAccelFeatures());
+			newItem.setGyroFeatures(instance.getGyroFeatures());
 			historyManager.writeHistoryItem(newItem);
-
-			// Write instance to temp file
-			try {
-				modelManager.writeInstance(isTestingSet.firstInstance(),
-						getFilesDir());
-			} catch (IOException e) {
-				new AlertDialog.Builder(context).setTitle("Error")
-						.setMessage("Error while writing to temp Arff file")
-						.show();
-				stopSelf();
-			}
-
-			// erase testing set
-			isTestingSet.delete();
-
-			// Reset delayed runnable
-			classificationHandler.postDelayed(classificationRunnable,
-					samplingDelay * 1000);
 		}
 	};
+
+	private HistoryManager historyManager;
 
 	@Override
 	public void onCreate() {
@@ -200,11 +85,15 @@ public class RecognizerService extends Service {
 		// Write current service status to shared preferences
 		sharedPrefs.edit().putBoolean("recognizer_isrunning", true).commit();
 
-		modelManager = new ModelManager();
+		// Get the sampling delay from shared preferences
+		String sdString = sharedPrefs.getString(
+				RecognizerSettingsActivity.KEY_REC_SAMPLING_DELAY, "5");
+		int samplingDelay = Integer.parseInt(sdString);
+
+		// Get the vehicle manager
+		vehicleManager = new VehicleManager(this, samplingDelay * 1000);
 
 		historyManager = new HistoryManager(this);
-
-		classifier = null;
 
 		// Get power manager and partial wake lock
 		powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -222,62 +111,11 @@ public class RecognizerService extends Service {
 		Toast.makeText(this, R.string.recognizer_service_loading,
 				Toast.LENGTH_SHORT).show();
 
-		// Get context
-		context = getApplicationContext();
-
-		// Declare the numeric attributes
-		Attribute Attribute1 = new Attribute("avga");
-		Attribute Attribute2 = new Attribute("avgg");
-		Attribute Attribute3 = new Attribute("maxa");
-		Attribute Attribute4 = new Attribute("maxg");
-		Attribute Attribute5 = new Attribute("mina");
-		Attribute Attribute6 = new Attribute("ming");
-		Attribute Attribute7 = new Attribute("stda");
-		Attribute Attribute8 = new Attribute("stdg");
-
-		// Declare the class attribute along with its values
-		FastVector fvClassVal = new FastVector(4);
-		fvClassVal.addElement("walking");
-		fvClassVal.addElement("car");
-		fvClassVal.addElement("train");
-		fvClassVal.addElement("idle");
-		Attribute ClassAttribute = new Attribute("theClass", fvClassVal);
-
-		// Declare the feature vector
-		fvWekaAttributes = new FastVector(9);
-		fvWekaAttributes.addElement(Attribute1);
-		fvWekaAttributes.addElement(Attribute2);
-		fvWekaAttributes.addElement(Attribute3);
-		fvWekaAttributes.addElement(Attribute4);
-		fvWekaAttributes.addElement(Attribute5);
-		fvWekaAttributes.addElement(Attribute6);
-		fvWekaAttributes.addElement(Attribute7);
-		fvWekaAttributes.addElement(Attribute8);
-		fvWekaAttributes.addElement(ClassAttribute);
-
-		// WARNING! Custom stack size may not be considered depending on the
-		// platform
-		Thread thread = new Thread(null, deserializationRunnable,
-				"modelOpener", 204800);
-		Log.v("ProviderService", "launching thread");
-		thread.start();
-		try {
-			thread.join();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-
-		// create testing set
-		isTestingSet = new Instances("Rel", fvWekaAttributes, 1);
-		isTestingSet.setClassIndex(8);
-
-		lastWindowExpire = SystemClock.elapsedRealtime();
-
-		// start sensor reading
-		registerSensors();
-
 		// Acquire partial wake lock
 		wakeLock.acquire();
+
+		// Start reading from the vehicle manager
+		vehicleManager.registerVehicleObserver(vehicleObserver);
 
 	}
 
@@ -288,14 +126,11 @@ public class RecognizerService extends Service {
 				Toast.LENGTH_SHORT).show();
 		Log.v("ProviderService", "stop");
 
+		// Stop reading from the vehicle manager
+		vehicleManager.unregisterVehicleObserver();
+
 		// Unregister screen off event listener
 		unregisterReceiver(screenOffReceiver);
-
-		// Unregister sensor listeners
-		unregisterSensors();
-
-		// Stop classification Handler
-		classificationHandler.removeCallbacks(classificationRunnable);
 
 		// Evaluation insertion test cancel
 		// testEvaluationTimer.cancel();
@@ -311,28 +146,6 @@ public class RecognizerService extends Service {
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		if (firstStart) {
-			// launch the execution of the delayed classification task
-			String sdString = sharedPrefs.getString(
-					RecognizerSettingsActivity.KEY_REC_SAMPLING_DELAY, "5");
-			samplingDelay = Integer.parseInt(sdString);
-			classificationHandler = new Handler();
-			classificationHandler.postDelayed(classificationRunnable,
-					samplingDelay * 1000);
-			firstStart = false;
-		}
-
-		Toast.makeText(this, R.string.recognizer_service_loaded,
-				Toast.LENGTH_SHORT).show();
-
-		// Reset temp file
-		try {
-			modelManager.resetTempFile(getFilesDir(), false);
-		} catch (IOException e) {
-			Log.v("TrainingService", "Error while resetting temp file");
-			e.printStackTrace();
-			stopSelf();
-		}
 
 		return START_STICKY;
 	}
@@ -386,35 +199,6 @@ public class RecognizerService extends Service {
 			Log.v("MainActivity", "Insert Evaluation Successful");
 		}
 
-	}
-
-	private void registerSensors() {
-		sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		if (sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null) {
-			List<Sensor> ls = sm.getSensorList(Sensor.TYPE_ACCELEROMETER);
-			for (int i = 0; i < ls.size(); i++) {
-				Sensor s_i = ls.get(i);
-				sm.registerListener(accelListener, s_i,
-						SensorManager.SENSOR_DELAY_NORMAL);
-			}
-		}
-		accelListener.startGenerating();
-		if (sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null) {
-			List<Sensor> ls = sm.getSensorList(Sensor.TYPE_GYROSCOPE);
-			for (int i = 0; i < ls.size(); i++) {
-				Sensor s_i = ls.get(i);
-				sm.registerListener(gyroListener, s_i,
-						SensorManager.SENSOR_DELAY_NORMAL);
-			}
-		}
-		gyroListener.startGenerating();
-	}
-
-	private void unregisterSensors() {
-		sm.unregisterListener(accelListener);
-		sm.unregisterListener(gyroListener);
-		accelListener.stopGenerating();
-		gyroListener.stopGenerating();
 	}
 
 }

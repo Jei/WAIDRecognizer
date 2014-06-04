@@ -10,6 +10,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+
 import android.annotation.SuppressLint;
 import android.content.res.AssetManager;
 import android.util.Log;
@@ -21,9 +22,21 @@ import weka.core.converters.ArffLoader;
 import weka.core.converters.ConverterUtils.DataSource;
 
 public class ModelManager {
-	
+
 	public static final String TEMP_FILE_NAME = "temp.arff";
 	public static final String HISTORY_FILE_NAME = "history.arff";
+	public static final String MODEL_FILE_NAME = "randomforest.model";
+
+	public File getClassificationModel() {
+		return new File("/data/data/it.unibo.cs.jonus.waidrec/files/"
+				+ MODEL_FILE_NAME);
+	}
+
+	public RandomForest getRandomForestClassifier() throws Exception {
+		return (RandomForest) weka.core.SerializationHelper
+				.read("/data/data/it.unibo.cs.jonus.waidrec/files/"
+						+ MODEL_FILE_NAME);
+	}
 
 	public void addClass(String className) {
 		// TODO aggiungi classe alla lista delle classi di veicoli
@@ -247,16 +260,18 @@ public class ModelManager {
 		// FIXME do not use hardcoded path
 		ObjectOutputStream output = new ObjectOutputStream(
 				new FileOutputStream(
-						"/data/data/it.unibo.cs.jonus.waidrec/files/randomforest.model"));
-		/*ObjectOutputStream externalOutput = new ObjectOutputStream(
-				new FileOutputStream(
-						"/sdcard/waidrec/randomforest.model"));*/
+						"/data/data/it.unibo.cs.jonus.waidrec/files/"
+								+ MODEL_FILE_NAME));
+		/*
+		 * ObjectOutputStream externalOutput = new ObjectOutputStream( new
+		 * FileOutputStream( "/sdcard/waidrec/randomforest.model"));
+		 */
 		output.writeObject(randomForestClassifier);
-		//externalOutput.writeObject(randomForestClassifier);
+		// externalOutput.writeObject(randomForestClassifier);
 		output.flush();
-		//externalOutput.flush();
+		// externalOutput.flush();
 		output.close();
-		//externalOutput.close();
+		// externalOutput.close();
 		Log.v("ModelManager", "model wrote to file");
 
 	}
