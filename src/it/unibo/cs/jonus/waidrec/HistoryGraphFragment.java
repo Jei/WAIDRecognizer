@@ -4,7 +4,6 @@
 package it.unibo.cs.jonus.waidrec;
 
 import java.util.ArrayList;
-
 import org.achartengine.ChartFactory;
 import org.achartengine.GraphicalView;
 import org.achartengine.chart.PointStyle;
@@ -12,9 +11,6 @@ import org.achartengine.model.TimeSeries;
 import org.achartengine.model.XYMultipleSeriesDataset;
 import org.achartengine.renderer.XYMultipleSeriesRenderer;
 import org.achartengine.renderer.XYSeriesRenderer;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-
 import android.app.Fragment;
 import android.graphics.Color;
 import android.graphics.Paint.Align;
@@ -38,7 +34,7 @@ public class HistoryGraphFragment extends Fragment {
 	private XYMultipleSeriesDataset chartDataset = new XYMultipleSeriesDataset();
 	private XYMultipleSeriesRenderer chartRenderer = new XYMultipleSeriesRenderer();
 
-	public static final String ARG_JSON_DATA = "json_data";
+	public static final String ARG_HISTORY_ITEMS = "history_items";
 
 	public HistoryGraphFragment() {
 
@@ -50,19 +46,19 @@ public class HistoryGraphFragment extends Fragment {
 		View rootView = inflater.inflate(R.layout.fragment_history_graph,
 				container, false);
 
-		// Get the JSON data
-		JSONArray data = (JSONArray) getArguments().getSerializable(
-				ARG_JSON_DATA);
+		// Get the list of items from the arguments
+		ArrayList<HistoryItem> historyList = getArguments()
+				.getParcelableArrayList(ARG_HISTORY_ITEMS);
 		// FIXME
-		if (data == null) {
-			data = new JSONArray();
+		if (historyList == null) {
+			historyList = new ArrayList<HistoryItem>();
 		}
 
 		// Store the categories in an array to generate the labels
 		final ArrayList<String> labelsArray = new ArrayList<String>();
-		for (int i = 0; i < data.size(); i++) {
-			JSONObject jsonObj = (JSONObject) data.get(i);
-			String category = (String) jsonObj.get("category");
+		for (int i = 0; i < historyList.size(); i++) {
+			HistoryItem item = historyList.get(i);
+			String category = item.getCategory();
 			if (!labelsArray.contains(category)) {
 				labelsArray.add(category);
 			}
@@ -70,18 +66,18 @@ public class HistoryGraphFragment extends Fragment {
 
 		// Fill the dataset
 		chartDataset.addSeries(categoriesSeries);
-		for (int i = 0; i < data.size(); i++) {
-			JSONObject jsonObj = (JSONObject) data.get(i);
-			Long timestamp = (Long) jsonObj.get("timestamp");
-			String category = (String) jsonObj.get("category");
-			Double avga = (Double) jsonObj.get("avga");
-			Double avgg = (Double) jsonObj.get("avgg");
-			Double maxa = (Double) jsonObj.get("maxa");
-			Double maxg = (Double) jsonObj.get("maxg");
-			Double mina = (Double) jsonObj.get("mina");
-			Double ming = (Double) jsonObj.get("ming");
-			Double stda = (Double) jsonObj.get("stda");
-			Double stdg = (Double) jsonObj.get("stdg");
+		for (int i = 0; i < historyList.size(); i++) {
+			HistoryItem item = historyList.get(i);
+			Long timestamp = item.getTimestamp();
+			String category = item.getCategory();
+			Double avga = item.getAccelFeatures().getAverage();
+			Double avgg = item.getGyroFeatures().getAverage();
+			Double maxa = item.getAccelFeatures().getMaximum();
+			Double maxg = item.getGyroFeatures().getMaximum();
+			Double mina = item.getAccelFeatures().getMinimum();
+			Double ming = item.getGyroFeatures().getMinimum();
+			Double stda = item.getAccelFeatures().getStandardDeviation();
+			Double stdg = item.getGyroFeatures().getStandardDeviation();
 
 			categoriesSeries.add(timestamp.doubleValue(),
 					labelsArray.indexOf(category));

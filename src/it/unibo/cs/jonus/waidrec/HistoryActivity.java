@@ -1,12 +1,7 @@
 package it.unibo.cs.jonus.waidrec;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.ArrayList;
-
-import org.json.simple.JSONArray;
-import org.json.simple.parser.ParseException;
+import java.util.Calendar;
 
 import android.annotation.TargetApi;
 import android.app.ActionBar;
@@ -18,6 +13,7 @@ import android.os.Build;
 import android.support.v4.app.NavUtils;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.ArrayAdapter;
 
 public class HistoryActivity extends Activity implements
 		ActionBar.OnNavigationListener {
@@ -29,8 +25,11 @@ public class HistoryActivity extends Activity implements
 	private static final String STATE_SELECTED_NAVIGATION_ITEM = "selected_navigation_item";
 
 	private HistoryManager historyManager;
-	private ArrayList<File> historyFiles;
-	private HistorySelectorAdapter historyAdapter;
+
+	private static final String[] historyValues = { "Today", "This Week",
+			"This Month", "All Time" };
+
+	private String currentFragmentTag;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -38,11 +37,10 @@ public class HistoryActivity extends Activity implements
 		setContentView(R.layout.activity_history);
 
 		// Get the list of history files from the history manager
-		historyManager = new HistoryManager(getFilesDir());
-		historyFiles = historyManager.getFilesList();
-		// Use the custom HistorySelectorAdapter for the dropdown list.
-		historyAdapter = new HistorySelectorAdapter(
-				getActionBarThemedContextCompat(), historyFiles);
+		historyManager = new HistoryManager(this);
+		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+				android.R.layout.simple_list_item_1, android.R.id.text1,
+				historyValues);
 
 		// Set up the action bar to show a dropdown list.
 		final ActionBar actionBar = getActionBar();
@@ -52,7 +50,7 @@ public class HistoryActivity extends Activity implements
 		actionBar.setDisplayHomeAsUpEnabled(true);
 
 		// Set up the dropdown list navigation in the action bar.
-		actionBar.setListNavigationCallbacks(historyAdapter, this);
+		actionBar.setListNavigationCallbacks(adapter, this);
 	}
 
 	/**
@@ -106,17 +104,20 @@ public class HistoryActivity extends Activity implements
 			NavUtils.navigateUpFromSameTask(this);
 			return true;
 		case R.id.action_delete_history_file:
-			// Get the selected item and delete the corresponding file
-			int selectedItem = getActionBar().getSelectedNavigationIndex();
-			File selectedFile = historyFiles.get(selectedItem);
-
-			if (historyManager.deleteFile(selectedFile)) {
-				// Update the action bar menu
-				historyFiles = historyManager.getFilesList();
-				historyAdapter.remove(selectedFile);
-				historyAdapter.notifyDataSetChanged();
-			}
-
+			// Delete the history and reload the fragment
+			historyManager.deleteHistory();
+			ArrayList<HistoryItem> historyList = (ArrayList<HistoryItem>) historyManager
+					.getHistory();
+			Fragment currentFragment = getFragmentManager().findFragmentByTag(
+					currentFragmentTag);
+			Bundle args = new Bundle();
+			args.putParcelableArrayList(HistoryGraphFragment.ARG_HISTORY_ITEMS,
+					historyList);
+			currentFragment.setArguments(args);
+			getFragmentManager()
+					.beginTransaction()
+					.replace(R.id.container, currentFragment,
+							currentFragmentTag).commit();
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
@@ -129,27 +130,52 @@ public class HistoryActivity extends Activity implements
 		Fragment fragment = new HistoryGraphFragment();
 		Bundle args = new Bundle();
 
-		// Get JSON data from the file selected
-		File selectedFile = historyFiles.get(position);
-		JSONArray historyJSON = null;
-		try {
-			historyJSON = historyManager.getJSONData(selectedFile);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		// Get the selected menu item and retrieve a list of items
+		ArrayList<HistoryItem> historyList = new ArrayList<HistoryItem>();
+		Long endTime = Long.MAX_VALUE;
+		Long startTime = null;
+		String tag = null;
+		switch (position) {
+		case 0:
+			startTime = getPastDay(0);
+			tag = "TODAY";
+			break;
+		case 1:
+			startTime = getPastDay(7);
+			tag = "THIS_WEEK";
+			break;
+		case 2:
+			startTime = getPastDay(30);
+			tag = "THIS_MONTH";
+			break;
+		case 3:
+			startTime = (long) 0;
+			tag = "ALL_TIME";
+			break;
 		}
-		// Call the new fragment with the JSON data
-		args.putSerializable(HistoryGraphFragment.ARG_JSON_DATA, historyJSON);
+
+		historyList = (ArrayList<HistoryItem>) historyManager.getHistory(
+				startTime, endTime);
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTimeInMillis(startTime);
+
+		// Call the new fragment with the list of history items
+		args.putParcelableArrayList(HistoryGraphFragment.ARG_HISTORY_ITEMS,
+				historyList);
 		fragment.setArguments(args);
 		getFragmentManager().beginTransaction()
-				.replace(R.id.container, fragment).commit();
+				.replace(R.id.container, fragment, tag).commit();
+		currentFragmentTag = tag;
 		return true;
 	}
 
+	private long getPastDay(int difference) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.add(Calendar.DATE, -difference);
+		int year = calendar.get(Calendar.YEAR);
+		int month = calendar.get(Calendar.MONTH);
+		int day = calendar.get(Calendar.DATE);
+		calendar.set(year, month, day, 0, 0, 0);
+		return calendar.getTime().getTime();
+	}
 }

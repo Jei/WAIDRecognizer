@@ -24,7 +24,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Binder;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -203,7 +202,7 @@ public class RecognizerService extends Service {
 
 		modelManager = new ModelManager();
 
-		historyManager = new HistoryManager(getFilesDir());
+		historyManager = new HistoryManager(this);
 
 		classifier = null;
 
@@ -284,14 +283,6 @@ public class RecognizerService extends Service {
 
 	@Override
 	public void onDestroy() {
-		// Write the history to file
-		try {
-			historyManager.writeSession();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
 		// Tell the user we stopped.
 		Toast.makeText(this, R.string.recognizer_service_stopped,
 				Toast.LENGTH_SHORT).show();
@@ -321,14 +312,6 @@ public class RecognizerService extends Service {
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		if (firstStart) {
-			// start history session
-			try {
-				historyManager.newSession();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-
 			// launch the execution of the delayed classification task
 			String sdString = sharedPrefs.getString(
 					RecognizerSettingsActivity.KEY_REC_SAMPLING_DELAY, "5");
