@@ -23,13 +23,13 @@ public class HistoryActivity extends Activity implements
 	 * current dropdown position.
 	 */
 	private static final String STATE_SELECTED_NAVIGATION_ITEM = "selected_navigation_item";
+	
+	private static final String TAG_HISTORY_FRAGMENT = "HISTORY";
 
 	private HistoryManager historyManager;
 
 	private static final String[] historyValues = { "Today", "This Week",
 			"This Month", "All Time" };
-
-	private String currentFragmentTag;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -104,20 +104,16 @@ public class HistoryActivity extends Activity implements
 			NavUtils.navigateUpFromSameTask(this);
 			return true;
 		case R.id.action_delete_history_file:
-			// Delete the history and reload the fragment
+			// Delete the history and pass the new list to the fragment
 			historyManager.deleteHistory();
 			ArrayList<HistoryItem> historyList = (ArrayList<HistoryItem>) historyManager
 					.getHistory();
-			Fragment currentFragment = getFragmentManager().findFragmentByTag(
-					currentFragmentTag);
+			HistoryGraphFragment currentFragment = (HistoryGraphFragment) getFragmentManager().findFragmentByTag(
+					TAG_HISTORY_FRAGMENT);
 			Bundle args = new Bundle();
 			args.putParcelableArrayList(HistoryGraphFragment.ARG_HISTORY_ITEMS,
 					historyList);
-			currentFragment.setArguments(args);
-			getFragmentManager()
-					.beginTransaction()
-					.replace(R.id.container, currentFragment,
-							currentFragmentTag).commit();
+			currentFragment.setHistoryList(args);
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
@@ -134,23 +130,18 @@ public class HistoryActivity extends Activity implements
 		ArrayList<HistoryItem> historyList = new ArrayList<HistoryItem>();
 		Long endTime = Long.MAX_VALUE;
 		Long startTime = null;
-		String tag = null;
 		switch (position) {
 		case 0:
 			startTime = getPastDay(0);
-			tag = "TODAY";
 			break;
 		case 1:
 			startTime = getPastDay(7);
-			tag = "THIS_WEEK";
 			break;
 		case 2:
 			startTime = getPastDay(30);
-			tag = "THIS_MONTH";
 			break;
 		case 3:
 			startTime = (long) 0;
-			tag = "ALL_TIME";
 			break;
 		}
 
@@ -164,8 +155,7 @@ public class HistoryActivity extends Activity implements
 				historyList);
 		fragment.setArguments(args);
 		getFragmentManager().beginTransaction()
-				.replace(R.id.container, fragment, tag).commit();
-		currentFragmentTag = tag;
+				.replace(R.id.container, fragment, TAG_HISTORY_FRAGMENT).commit();
 		return true;
 	}
 

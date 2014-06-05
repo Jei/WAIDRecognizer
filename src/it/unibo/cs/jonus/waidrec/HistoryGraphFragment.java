@@ -4,6 +4,8 @@
 package it.unibo.cs.jonus.waidrec;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+
 import org.achartengine.ChartFactory;
 import org.achartengine.GraphicalView;
 import org.achartengine.chart.PointStyle;
@@ -11,6 +13,7 @@ import org.achartengine.model.TimeSeries;
 import org.achartengine.model.XYMultipleSeriesDataset;
 import org.achartengine.renderer.XYMultipleSeriesRenderer;
 import org.achartengine.renderer.XYSeriesRenderer;
+
 import android.app.Fragment;
 import android.graphics.Color;
 import android.graphics.Paint.Align;
@@ -19,22 +22,28 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemSelectedListener;
+import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 
 /**
  * @author jei
  * 
  */
 public class HistoryGraphFragment extends Fragment {
-	// TODO add charts for sensor data and chart selector
 
-	private GraphicalView categoriesChart;
-	private TimeSeries categoriesSeries = new TimeSeries("Category");
-	private XYSeriesRenderer categoriesRenderer = new XYSeriesRenderer();
-	private XYMultipleSeriesDataset chartDataset = new XYMultipleSeriesDataset();
-	private XYMultipleSeriesRenderer chartRenderer = new XYMultipleSeriesRenderer();
-
+	private GraphicalView mChart;
+	private LinearLayout graphLayout;
+	private Spinner historyDataSpinner;
+	private static final String[] spinnerChoices = { "Vehicles",
+			"Accelerometer", "Gyroscope" };
 	public static final String ARG_HISTORY_ITEMS = "history_items";
+	private static final int CHART_CATEGORIES = 0;
+	private static final int CHART_ACCELEROMETER = 1;
+	private static final int CHART_GYROSCOPE = 2;
+	ArrayList<HistoryItem> currentHistoryList;
 
 	public HistoryGraphFragment() {
 
@@ -46,51 +55,235 @@ public class HistoryGraphFragment extends Fragment {
 		View rootView = inflater.inflate(R.layout.fragment_history_graph,
 				container, false);
 
+		// Populate the spinner for data selection
+		historyDataSpinner = (Spinner) rootView
+				.findViewById(R.id.historyDataSpinner);
+		ArrayAdapter<String> spinnerArrayAdapter = new ArrayAdapter<String>(
+				this.getActivity(), android.R.layout.simple_spinner_item,
+				new ArrayList<String>(Arrays.asList(spinnerChoices)));
+		spinnerArrayAdapter
+				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		historyDataSpinner.setAdapter(spinnerArrayAdapter);
+		historyDataSpinner
+				.setOnItemSelectedListener(new OnItemSelectedListener() {
+
+					@Override
+					public void onItemSelected(AdapterView<?> parentView,
+							View selected, int position, long id) {
+						mChart = getChart(position);
+						graphLayout.removeAllViews();
+						graphLayout.addView(mChart);
+					}
+
+					@Override
+					public void onNothingSelected(AdapterView<?> parentView) {
+
+					}
+				});
+
 		// Get the list of items from the arguments
-		ArrayList<HistoryItem> historyList = getArguments()
-				.getParcelableArrayList(ARG_HISTORY_ITEMS);
-		// FIXME
-		if (historyList == null) {
-			historyList = new ArrayList<HistoryItem>();
+		currentHistoryList = getArguments().getParcelableArrayList(
+				ARG_HISTORY_ITEMS);
+		if (currentHistoryList == null) {
+			currentHistoryList = new ArrayList<HistoryItem>();
 		}
 
-		// Store the categories in an array to generate the labels
-		final ArrayList<String> labelsArray = new ArrayList<String>();
-		for (int i = 0; i < historyList.size(); i++) {
-			HistoryItem item = historyList.get(i);
+		// Generate the chart
+		mChart = getChart(CHART_CATEGORIES);
+
+		// Add the graph to the layout
+		graphLayout = (LinearLayout) rootView.findViewById(R.id.graphLayout);
+		graphLayout.addView(mChart);
+
+		return rootView;
+	}
+
+	public void setHistoryList(Bundle bundle) {
+		// Get the list of items from the bundle
+		currentHistoryList = bundle.getParcelableArrayList(ARG_HISTORY_ITEMS);
+
+		if (currentHistoryList != null) {
+			int currentSelection = historyDataSpinner.getSelectedItemPosition();
+			mChart = getChart(currentSelection);
+			graphLayout.removeAllViews();
+			graphLayout.addView(mChart);
+		}
+	}
+
+	private GraphicalView getChart(int type) {
+		// Get the chartRenderer
+		XYMultipleSeriesRenderer chartRenderer = getChartRenderer();
+
+		XYMultipleSeriesDataset chartDataset = null;
+		double[] limits = { 0, 0, 0, 0 };
+		int[] colors = { Color.CYAN, Color.YELLOW, Color.MAGENTA, Color.BLUE };
+		switch (type) {
+		case CHART_CATEGORIES:
+			// Generate labels for the series
+			ArrayList<String> labelsList = new ArrayList<String>();
+			for (int i = 0; i < currentHistoryList.size(); i++) {
+				HistoryItem item = currentHistoryList.get(i);
+				String category = item.getCategory();
+				if (!labelsList.contains(category)) {
+					labelsList.add(category);
+				}
+			}
+			chartDataset = getCategoriesData();
+
+			// Style the series
+			XYSeriesRenderer categoriesRenderer = new XYSeriesRenderer();
+			categoriesRenderer.setPointStyle(PointStyle.CIRCLE);
+			categoriesRenderer.setFillPoints(true);
+			categoriesRenderer.setColor(Color.BLACK);
+
+			// Add series style and labels to the chart renderer
+			chartRenderer.addSeriesRenderer(categoriesRenderer);
+			for (String category : labelsList) {
+				chartRenderer.addYTextLabel(labelsList.indexOf(category),
+						category);
+			}
+			chartRenderer.setYLabels(labelsList.size());
+
+			// Set limits
+			limits[2] = chartDataset.getSeriesAt(0).getMinY() - 0.2;
+			limits[3] = chartDataset.getSeriesAt(0).getMaxY() + 0.2;
+			break;
+		case CHART_ACCELEROMETER:
+			for (int i = 0; i < 4; i++) {
+				XYSeriesRenderer renderer = new XYSeriesRenderer();
+				renderer.setPointStyle(PointStyle.CIRCLE);
+				renderer.setFillPoints(true);
+				renderer.setColor(colors[i]);
+				chartRenderer.addSeriesRenderer(renderer);
+			}
+
+			chartDataset = getAccelerometerData();
+
+			// Set limits
+			limits[2] = chartDataset.getSeriesAt(3).getMinY() - 1;
+			limits[3] = chartDataset.getSeriesAt(3).getMaxY() + 1;
+			break;
+		case CHART_GYROSCOPE:
+			for (int i = 0; i < 4; i++) {
+				XYSeriesRenderer renderer = new XYSeriesRenderer();
+				renderer.setPointStyle(PointStyle.CIRCLE);
+				renderer.setFillPoints(true);
+				renderer.setColor(colors[i]);
+				chartRenderer.addSeriesRenderer(renderer);
+			}
+
+			chartDataset = getGyroscopeData();
+
+			// Set limits
+			limits[2] = chartDataset.getSeriesAt(3).getMinY() - 0.5;
+			limits[3] = chartDataset.getSeriesAt(3).getMaxY() + 0.5;
+			break;
+		}
+		limits[0] = chartDataset.getSeriesAt(0).getMinX() - 100000;
+		limits[1] = chartDataset.getSeriesAt(0).getMaxX() + 100000;
+
+		// Set pan and zoom limits
+		chartRenderer.setPanLimits(limits);
+		chartRenderer.setZoomLimits(limits);
+		chartRenderer.setXAxisMin(limits[0]);
+		chartRenderer.setXAxisMax(limits[1]);
+		chartRenderer.setYAxisMin(limits[2]);
+		chartRenderer.setYAxisMax(limits[3]);
+
+		return ChartFactory.getTimeChartView(getActivity(), chartDataset,
+				chartRenderer, "HH:mm:ss");
+
+	}
+
+	private XYMultipleSeriesDataset getCategoriesData() {
+		XYMultipleSeriesDataset dataset = new XYMultipleSeriesDataset();
+		TimeSeries series = new TimeSeries("Category");
+
+		ArrayList<String> labelsList = new ArrayList<String>();
+		for (int i = 0; i < currentHistoryList.size(); i++) {
+			HistoryItem item = currentHistoryList.get(i);
 			String category = item.getCategory();
-			if (!labelsArray.contains(category)) {
-				labelsArray.add(category);
+			if (!labelsList.contains(category)) {
+				labelsList.add(category);
 			}
 		}
 
-		// Fill the dataset
-		chartDataset.addSeries(categoriesSeries);
-		for (int i = 0; i < historyList.size(); i++) {
-			HistoryItem item = historyList.get(i);
+		dataset.addSeries(series);
+		for (int i = 0; i < currentHistoryList.size(); i++) {
+			HistoryItem item = currentHistoryList.get(i);
 			Long timestamp = item.getTimestamp();
 			String category = item.getCategory();
-			Double avga = item.getAccelFeatures().getAverage();
-			Double avgg = item.getGyroFeatures().getAverage();
-			Double maxa = item.getAccelFeatures().getMaximum();
-			Double maxg = item.getGyroFeatures().getMaximum();
-			Double mina = item.getAccelFeatures().getMinimum();
-			Double ming = item.getGyroFeatures().getMinimum();
-			Double stda = item.getAccelFeatures().getStandardDeviation();
-			Double stdg = item.getGyroFeatures().getStandardDeviation();
 
-			categoriesSeries.add(timestamp.doubleValue(),
-					labelsArray.indexOf(category));
+			series.add(timestamp.doubleValue(), labelsList.indexOf(category));
 
 		}
 
-		// Set the labels of the Y axis (categories)
-		for (String category : labelsArray) {
-			chartRenderer
-					.addYTextLabel(labelsArray.indexOf(category), category);
+		return dataset;
+	}
+
+	private XYMultipleSeriesDataset getAccelerometerData() {
+		XYMultipleSeriesDataset dataset = new XYMultipleSeriesDataset();
+		TimeSeries avgaSeries = new TimeSeries("Average");
+		TimeSeries minaSeries = new TimeSeries("Minimum");
+		TimeSeries maxaSeries = new TimeSeries("Maximum");
+		TimeSeries stdaSeries = new TimeSeries("Standard Deviation");
+
+		dataset.addSeries(avgaSeries);
+		dataset.addSeries(minaSeries);
+		dataset.addSeries(maxaSeries);
+		dataset.addSeries(stdaSeries);
+		for (int i = 0; i < currentHistoryList.size(); i++) {
+			HistoryItem item = currentHistoryList.get(i);
+			Long timestamp = item.getTimestamp();
+			MagnitudeFeatures accelFeatures = item.getAccelFeatures();
+			Double avga = accelFeatures.getAverage();
+			Double maxa = accelFeatures.getMaximum();
+			Double mina = accelFeatures.getMinimum();
+			Double stda = accelFeatures.getStandardDeviation();
+
+			avgaSeries.add(timestamp.doubleValue(), avga);
+			minaSeries.add(timestamp.doubleValue(), mina);
+			maxaSeries.add(timestamp.doubleValue(), maxa);
+			stdaSeries.add(timestamp.doubleValue(), stda);
+
 		}
 
-		// Style the chart
+		return dataset;
+	}
+
+	private XYMultipleSeriesDataset getGyroscopeData() {
+		XYMultipleSeriesDataset dataset = new XYMultipleSeriesDataset();
+		TimeSeries avggSeries = new TimeSeries("Average");
+		TimeSeries mingSeries = new TimeSeries("Minimum");
+		TimeSeries maxgSeries = new TimeSeries("Maximum");
+		TimeSeries stdgSeries = new TimeSeries("Standard Deviation");
+
+		dataset.addSeries(avggSeries);
+		dataset.addSeries(mingSeries);
+		dataset.addSeries(maxgSeries);
+		dataset.addSeries(stdgSeries);
+		for (int i = 0; i < currentHistoryList.size(); i++) {
+			HistoryItem item = currentHistoryList.get(i);
+			Long timestamp = item.getTimestamp();
+			MagnitudeFeatures gyroFeatures = item.getGyroFeatures();
+			Double avgg = gyroFeatures.getAverage();
+			Double maxg = gyroFeatures.getMaximum();
+			Double ming = gyroFeatures.getMinimum();
+			Double stdg = gyroFeatures.getStandardDeviation();
+
+			avggSeries.add(timestamp.doubleValue(), avgg);
+			mingSeries.add(timestamp.doubleValue(), ming);
+			maxgSeries.add(timestamp.doubleValue(), maxg);
+			stdgSeries.add(timestamp.doubleValue(), stdg);
+
+		}
+
+		return dataset;
+	}
+
+	private XYMultipleSeriesRenderer getChartRenderer() {
+		XYMultipleSeriesRenderer renderer = new XYMultipleSeriesRenderer();
+
 		// TODO better style
 		float textSize = (float) TypedValue.applyDimension(
 				TypedValue.COMPLEX_UNIT_SP, 12, getResources()
@@ -101,46 +294,28 @@ public class HistoryGraphFragment extends Fragment {
 		int marginSizeLarge = (int) TypedValue.applyDimension(
 				TypedValue.COMPLEX_UNIT_SP, 50, getResources()
 						.getDisplayMetrics());
-		chartRenderer.setLabelsTextSize(textSize);
-		chartRenderer.setYLabelsAngle(-30.0f);
-		chartRenderer.setXLabelsAngle(-30.0f);
-		chartRenderer.setXLabelsColor(Color.BLACK);
-		chartRenderer.setYLabelsColor(0, Color.BLACK);
-		chartRenderer.setXLabelsAlign(Align.RIGHT);
-		chartRenderer.setYLabelsAlign(Align.RIGHT);
-		chartRenderer.setLegendTextSize(textSize);
-		chartRenderer.setFitLegend(true);
-		chartRenderer.setMargins(new int[] { marginSizeNormal, marginSizeLarge,
+		renderer.setLabelsTextSize(textSize);
+		renderer.setYLabelsAngle(-30.0f);
+		renderer.setXLabelsAngle(-30.0f);
+		renderer.setXLabelsColor(Color.BLACK);
+		renderer.setYLabelsColor(0, Color.BLACK);
+		renderer.setXLabelsAlign(Align.RIGHT);
+		renderer.setYLabelsAlign(Align.RIGHT);
+		renderer.setLegendTextSize(textSize);
+		renderer.setFitLegend(true);
+		renderer.setMargins(new int[] { marginSizeNormal, marginSizeLarge,
 				marginSizeLarge, marginSizeNormal });
-		chartRenderer.setPanEnabled(true, false);
-		chartRenderer.setZoomEnabled(true, false);
-		chartRenderer.setZoomButtonsVisible(false);
-		chartRenderer.setBackgroundColor(Color.WHITE);
-		chartRenderer.setMarginsColor(Color.WHITE);
-		chartRenderer.setGridColor(Color.BLACK);
-		chartRenderer.setPointSize(8);
-		chartRenderer.setShowGridY(true);
-		chartRenderer.setAntialiasing(true);
-		// chartRenderer.setPanLimits(new double[] { 0,
-		// categoriesSeries.getMinX(), 0, categoriesSeries.getMaxX() });
-		chartRenderer.setYLabels(labelsArray.size());
-		chartRenderer.setClickEnabled(false);
+		renderer.setPanEnabled(true, false);
+		renderer.setZoomEnabled(true, false);
+		renderer.setZoomButtonsVisible(false);
+		renderer.setBackgroundColor(Color.WHITE);
+		renderer.setMarginsColor(Color.WHITE);
+		renderer.setGridColor(Color.BLACK);
+		renderer.setPointSize(8);
+		renderer.setShowGridY(true);
+		renderer.setClickEnabled(false);
+		renderer.setXLabels(10);
 
-		// Style the series
-		categoriesRenderer.setPointStyle(PointStyle.DIAMOND);
-		categoriesRenderer.setFillPoints(true);
-		categoriesRenderer.setColor(Color.BLACK);
-
-		// Generate the chart
-		chartRenderer.addSeriesRenderer(categoriesRenderer);
-		categoriesChart = ChartFactory.getTimeChartView(getActivity(),
-				chartDataset, chartRenderer, "HH:mm:ss");
-
-		// Add the graph to the layout
-		LinearLayout layout = (LinearLayout) rootView
-				.findViewById(R.id.graphLayout);
-		layout.addView(categoriesChart);
-
-		return rootView;
+		return renderer;
 	}
 }
