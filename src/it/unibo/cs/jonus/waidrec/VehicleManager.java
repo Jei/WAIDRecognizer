@@ -152,7 +152,7 @@ public class VehicleManager {
 	 */
 	public VehicleManager(Context context, long delay) {
 		mContext = context;
-		mModelManager = new ModelManager();
+		mModelManager = new ModelManager(mContext.getFilesDir());
 		mSensorManager = (SensorManager) mContext
 				.getSystemService(Context.SENSOR_SERVICE);
 		samplingDelay = delay;

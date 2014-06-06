@@ -131,7 +131,7 @@ public class RecognizerActivity extends Activity {
 		notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
 		// Create new ModelManager
-		modelManager = new ModelManager();
+		modelManager = new ModelManager(getFilesDir());
 
 		// Runnable for model generation thread
 		class ModelResetRunnable implements Runnable {
@@ -146,9 +146,9 @@ public class RecognizerActivity extends Activity {
 				Message message = new Message();
 				// Reset original arff files
 				try {
-					modelManager.resetFromAssets(getAssets(), getFilesDir());
+					modelManager.resetFromAssets(getAssets());
 					Log.v("resetModel", "assets reset");
-					modelManager.generateModel(getFilesDir());
+					modelManager.generateModel();
 					Log.v("resetModel", "model generated");
 					// Operations completed correctly, return 0
 					message.arg1 = 0;
