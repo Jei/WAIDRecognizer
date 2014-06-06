@@ -44,7 +44,7 @@ public class RecognizerActivity extends Activity {
 
 	private Handler contentProviderHandler = new Handler();
 	private ListView historyView;
-	private ArrayList<Evaluation> evaluationsList;
+	private ArrayList<VehicleInstance> evaluationsList;
 
 	private ImageView noneView;
 	private ImageView walkingView;
@@ -202,7 +202,7 @@ public class RecognizerActivity extends Activity {
 		// Prepare history view
 		Context context = getApplicationContext();
 		historyView = (ListView) findViewById(R.id.historyView);
-		evaluationsList = new ArrayList<Evaluation>();
+		evaluationsList = new ArrayList<VehicleInstance>();
 		historyView
 				.setAdapter(new HistoryListAdapter(context, evaluationsList));
 		historyView.setEmptyView(findViewById(R.id.emptyView));
@@ -326,7 +326,7 @@ public class RecognizerActivity extends Activity {
 			// Clear long term history
 			evaluationsList.clear();
 			@SuppressWarnings("unchecked")
-			ArrayAdapter<Evaluation> adapter = (ArrayAdapter<Evaluation>) historyView
+			ArrayAdapter<VehicleInstance> adapter = (ArrayAdapter<VehicleInstance>) historyView
 					.getAdapter();
 			adapter.notifyDataSetChanged();
 
@@ -394,9 +394,12 @@ public class RecognizerActivity extends Activity {
 	private void updateUI() {
 
 		// Get last evaluation from content provider
-		String[] projection = { DatabaseOpenHelper.COLUMN_ID,
-				DatabaseOpenHelper.COLUMN_TIMESTAMP,
-				DatabaseOpenHelper.COLUMN_CATEGORY };
+		String[] projection = { DatabaseOpenHelper.COLUMN_TIMESTAMP,
+				DatabaseOpenHelper.COLUMN_CATEGORY,
+				DatabaseOpenHelper.COLUMN_AVGA, DatabaseOpenHelper.COLUMN_MINA,
+				DatabaseOpenHelper.COLUMN_MAXA, DatabaseOpenHelper.COLUMN_STDA,
+				DatabaseOpenHelper.COLUMN_AVGG, DatabaseOpenHelper.COLUMN_MING,
+				DatabaseOpenHelper.COLUMN_MAXG, DatabaseOpenHelper.COLUMN_STDG };
 		Uri uri = Uri.parse(EvaluationsProvider.CONTENT_URI + "/last");
 		Cursor cursor = getContentResolver().query(uri, projection, null, null,
 				null);
@@ -404,24 +407,20 @@ public class RecognizerActivity extends Activity {
 			return;
 		}
 		cursor.moveToFirst();
-		long id = cursor.getLong(cursor
-				.getColumnIndexOrThrow(DatabaseOpenHelper.COLUMN_ID));
-		String category = cursor.getString(cursor
-				.getColumnIndexOrThrow(DatabaseOpenHelper.COLUMN_CATEGORY));
-		long timestamp = cursor.getLong(cursor
-				.getColumnIndexOrThrow(DatabaseOpenHelper.COLUMN_TIMESTAMP));
+		VehicleInstance lastInstance = EvaluationsProvider
+				.cursorToVehicleInstance(cursor);
 
 		// Update long history
-		evaluationsList.add(new Evaluation(id, timestamp, category));
+		evaluationsList.add(lastInstance);
 		@SuppressWarnings("unchecked")
-		ArrayAdapter<Evaluation> adapter = (ArrayAdapter<Evaluation>) historyView
+		ArrayAdapter<VehicleInstance> adapter = (ArrayAdapter<VehicleInstance>) historyView
 				.getAdapter();
 		adapter.notifyDataSetChanged();
 
 		// If classification changed, switch image
-		if (currentClassification != category) {
+		if (currentClassification != lastInstance.getCategory()) {
 
-			currentClassification = category;
+			currentClassification = lastInstance.getCategory();
 
 			// switch not working with JRE under 1.7
 			if (currentClassification.equals("car")) {

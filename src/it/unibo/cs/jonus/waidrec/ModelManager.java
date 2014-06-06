@@ -64,7 +64,7 @@ public class ModelManager {
 		fvWekaAttributes.addElement(Attribute7);
 		fvWekaAttributes.addElement(Attribute8);
 		fvWekaAttributes.addElement(ClassAttribute);
-		
+
 		writingSet = new Instances("Rel", fvWekaAttributes, 1);
 		writingSet.setClassIndex(8);
 	}
@@ -142,26 +142,22 @@ public class ModelManager {
 		MagnitudeFeatures accelFeatures = newInstance.getAccelFeatures();
 		MagnitudeFeatures gyroFeatures = newInstance.getGyroFeatures();
 
-		if (accelFeatures != null) {
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(0),
-					accelFeatures.getAverage());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(2),
-					accelFeatures.getMaximum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(4),
-					accelFeatures.getMinimum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(6),
-					accelFeatures.getStandardDeviation());
-		}
-		if (gyroFeatures != null) {
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(1),
-					gyroFeatures.getAverage());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(3),
-					gyroFeatures.getMaximum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(5),
-					gyroFeatures.getMinimum());
-			inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
-					gyroFeatures.getStandardDeviation());
-		}
+		inst.setValue((Attribute) fvWekaAttributes.elementAt(0),
+				accelFeatures.getAverage());
+		inst.setValue((Attribute) fvWekaAttributes.elementAt(2),
+				accelFeatures.getMaximum());
+		inst.setValue((Attribute) fvWekaAttributes.elementAt(4),
+				accelFeatures.getMinimum());
+		inst.setValue((Attribute) fvWekaAttributes.elementAt(6),
+				accelFeatures.getStandardDeviation());
+		inst.setValue((Attribute) fvWekaAttributes.elementAt(1),
+				gyroFeatures.getAverage());
+		inst.setValue((Attribute) fvWekaAttributes.elementAt(3),
+				gyroFeatures.getMaximum());
+		inst.setValue((Attribute) fvWekaAttributes.elementAt(5),
+				gyroFeatures.getMinimum());
+		inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
+				gyroFeatures.getStandardDeviation());
 
 		inst.setValue((Attribute) fvWekaAttributes.elementAt(8), category);
 		writingSet.add(inst);
@@ -173,7 +169,7 @@ public class ModelManager {
 		} finally {
 			writer.close();
 		}
-		
+
 		writingSet.delete();
 
 	}

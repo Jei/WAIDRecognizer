@@ -14,12 +14,12 @@ import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-public class HistoryListAdapter extends ArrayAdapter<Evaluation>{
+public class HistoryListAdapter extends ArrayAdapter<VehicleInstance>{
 	
     private LayoutInflater inflater;
-    private List<Evaluation> items;
+    private List<VehicleInstance> items;
 
-	public HistoryListAdapter(Context ctx, ArrayList<Evaluation> objects) {
+	public HistoryListAdapter(Context ctx, ArrayList<VehicleInstance> objects) {
 		super(ctx, R.layout.history_item, objects);
 		
 		this.inflater = LayoutInflater.from(ctx);
@@ -33,7 +33,7 @@ public class HistoryListAdapter extends ArrayAdapter<Evaluation>{
 		convertView = (LinearLayout) inflater.inflate(R.layout.history_item, parent, false);
 		
 		// Extract evaluation
-		Evaluation evaluation = getItem(position);
+		VehicleInstance evaluation = getItem(position);
 
 		// Set item's category
 		TextView txtCategory = (TextView) convertView.findViewById(R.id.category);
@@ -51,7 +51,7 @@ public class HistoryListAdapter extends ArrayAdapter<Evaluation>{
     }
 	
 	@Override
-	public Evaluation getItem(int position) {
+	public VehicleInstance getItem(int position) {
         return items.get(position);
     }
 

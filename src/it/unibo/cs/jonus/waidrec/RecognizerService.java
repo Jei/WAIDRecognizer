@@ -63,19 +63,9 @@ public class RecognizerService extends Service {
 		@Override
 		public void onNewInstance(VehicleInstance instance) {
 			// Send evaluation to content provider
-			sendEvaluation(instance.getCategory(), instance.getTimestamp());
-
-			// Write evaluation to history
-			HistoryItem newItem = new HistoryItem();
-			newItem.setTimestamp(instance.getTimestamp());
-			newItem.setCategory(instance.getCategory());
-			newItem.setAccelFeatures(instance.getAccelFeatures());
-			newItem.setGyroFeatures(instance.getGyroFeatures());
-			historyManager.writeHistoryItem(newItem);
+			sendInstance(instance);
 		}
 	};
-
-	private HistoryManager historyManager;
 
 	@Override
 	public void onCreate() {
@@ -92,8 +82,6 @@ public class RecognizerService extends Service {
 
 		// Get the vehicle manager
 		vehicleManager = new VehicleManager(this, samplingDelay * 1000);
-
-		historyManager = new HistoryManager(this);
 
 		// Get power manager and partial wake lock
 		powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -162,13 +150,11 @@ public class RecognizerService extends Service {
 		}
 	}
 
-	private void sendEvaluation(String classification, long timestamp) {
-		ContentValues values = new ContentValues();
-		values.put(DatabaseOpenHelper.COLUMN_TIMESTAMP, timestamp);
-		values.put(DatabaseOpenHelper.COLUMN_CATEGORY, classification);
+	private void sendInstance(VehicleInstance instance) {
+		ContentValues values = EvaluationsProvider
+				.vehicleInstanceToContentValues(instance);
 
 		getContentResolver().insert(EvaluationsProvider.CONTENT_URI, values);
-		Log.v("ProviderService", "evaluation sent");
 	}
 
 	// Evaluation insertion test method

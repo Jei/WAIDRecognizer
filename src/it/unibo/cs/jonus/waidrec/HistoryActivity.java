@@ -7,8 +7,10 @@ import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.Fragment;
+import android.net.Uri;
 import android.os.Bundle;
 import android.content.Context;
+import android.database.Cursor;
 import android.os.Build;
 import android.support.v4.app.NavUtils;
 import android.view.Menu;
@@ -23,10 +25,16 @@ public class HistoryActivity extends Activity implements
 	 * current dropdown position.
 	 */
 	private static final String STATE_SELECTED_NAVIGATION_ITEM = "selected_navigation_item";
-	
+
 	private static final String TAG_HISTORY_FRAGMENT = "HISTORY";
 
-	private HistoryManager historyManager;
+	private static final String[] allColumnsProjection = {
+			DatabaseOpenHelper.COLUMN_TIMESTAMP,
+			DatabaseOpenHelper.COLUMN_CATEGORY, DatabaseOpenHelper.COLUMN_AVGA,
+			DatabaseOpenHelper.COLUMN_MINA, DatabaseOpenHelper.COLUMN_MAXA,
+			DatabaseOpenHelper.COLUMN_STDA, DatabaseOpenHelper.COLUMN_AVGG,
+			DatabaseOpenHelper.COLUMN_MING, DatabaseOpenHelper.COLUMN_MAXG,
+			DatabaseOpenHelper.COLUMN_STDG };
 
 	private static final String[] historyValues = { "Today", "This Week",
 			"This Month", "All Time" };
@@ -36,8 +44,6 @@ public class HistoryActivity extends Activity implements
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_history);
 
-		// Get the list of history files from the history manager
-		historyManager = new HistoryManager(this);
 		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
 				android.R.layout.simple_list_item_1, android.R.id.text1,
 				historyValues);
@@ -105,11 +111,24 @@ public class HistoryActivity extends Activity implements
 			return true;
 		case R.id.action_delete_history_file:
 			// Delete the history and pass the new list to the fragment
-			historyManager.deleteHistory();
-			ArrayList<HistoryItem> historyList = (ArrayList<HistoryItem>) historyManager
-					.getHistory();
-			HistoryGraphFragment currentFragment = (HistoryGraphFragment) getFragmentManager().findFragmentByTag(
-					TAG_HISTORY_FRAGMENT);
+			Uri uri = Uri.parse(EvaluationsProvider.CONTENT_URI
+					+ EvaluationsProvider.PATH_ERASE_EVALUATIONS);
+			getContentResolver().delete(uri, null, null);
+
+			// Get the VehicleInstances from the Content Provider
+			uri = Uri.parse(EvaluationsProvider.CONTENT_URI
+					+ EvaluationsProvider.PATH_ALL_EVALUATIONS);
+			String sortOrder = DatabaseOpenHelper.COLUMN_TIMESTAMP + " DESC";
+			Cursor cursor = getContentResolver().query(uri,
+					allColumnsProjection, null, null, sortOrder);
+
+			// Convert the instances to history items
+			ArrayList<VehicleInstance> instanceList = EvaluationsProvider
+					.cursorToVehicleInstanceArray(cursor);
+			ArrayList<HistoryItem> historyList = getHistoryItemArray(instanceList);
+
+			HistoryGraphFragment currentFragment = (HistoryGraphFragment) getFragmentManager()
+					.findFragmentByTag(TAG_HISTORY_FRAGMENT);
 			Bundle args = new Bundle();
 			args.putParcelableArrayList(HistoryGraphFragment.ARG_HISTORY_ITEMS,
 					historyList);
@@ -127,7 +146,6 @@ public class HistoryActivity extends Activity implements
 		Bundle args = new Bundle();
 
 		// Get the selected menu item and retrieve a list of items
-		ArrayList<HistoryItem> historyList = new ArrayList<HistoryItem>();
 		Long endTime = Long.MAX_VALUE;
 		Long startTime = null;
 		switch (position) {
@@ -145,17 +163,28 @@ public class HistoryActivity extends Activity implements
 			break;
 		}
 
-		historyList = (ArrayList<HistoryItem>) historyManager.getHistory(
-				startTime, endTime);
-		Calendar calendar = Calendar.getInstance();
-		calendar.setTimeInMillis(startTime);
+		// Get the VehicleInstances from the Content Provider
+		Uri uri = Uri.parse(EvaluationsProvider.CONTENT_URI
+				+ EvaluationsProvider.PATH_ALL_EVALUATIONS);
+		String selection = DatabaseOpenHelper.COLUMN_TIMESTAMP + " >= "
+				+ startTime + " AND " + DatabaseOpenHelper.COLUMN_TIMESTAMP
+				+ " <= " + endTime;
+		String sortOrder = DatabaseOpenHelper.COLUMN_TIMESTAMP + " DESC";
+		Cursor cursor = getContentResolver().query(uri, allColumnsProjection,
+				selection, null, sortOrder);
+
+		// Convert the instances to history items
+		ArrayList<VehicleInstance> instanceList = EvaluationsProvider
+				.cursorToVehicleInstanceArray(cursor);
+		ArrayList<HistoryItem> historyList = getHistoryItemArray(instanceList);
 
 		// Call the new fragment with the list of history items
 		args.putParcelableArrayList(HistoryGraphFragment.ARG_HISTORY_ITEMS,
 				historyList);
 		fragment.setArguments(args);
 		getFragmentManager().beginTransaction()
-				.replace(R.id.container, fragment, TAG_HISTORY_FRAGMENT).commit();
+				.replace(R.id.container, fragment, TAG_HISTORY_FRAGMENT)
+				.commit();
 		return true;
 	}
 
@@ -168,4 +197,21 @@ public class HistoryActivity extends Activity implements
 		calendar.set(year, month, day, 0, 0, 0);
 		return calendar.getTime().getTime();
 	}
+
+	private ArrayList<HistoryItem> getHistoryItemArray(
+			ArrayList<VehicleInstance> instances) {
+		ArrayList<HistoryItem> items = new ArrayList<HistoryItem>();
+
+		for (VehicleInstance instance : instances) {
+			HistoryItem item = new HistoryItem();
+			item.setCategory(instance.getCategory());
+			item.setTimestamp(instance.getTimestamp());
+			item.setAccelFeatures(instance.getAccelFeatures());
+			item.setGyroFeatures(instance.getGyroFeatures());
+			items.add(item);
+		}
+
+		return items;
+	}
+
 }

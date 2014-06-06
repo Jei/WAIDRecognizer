@@ -6,39 +6,26 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class DatabaseOpenHelper extends SQLiteOpenHelper {
 
-	private static final int DATABASE_VERSION = 3;
+	private static final int DATABASE_VERSION = 4;
 	public static final String DATABASE_NAME = "waid.db";
 	public static final String TABLE_EVALUATIONS = "evaluations";
-	public static final String TABLE_HISTORY = "history";
 
 	public static final String COLUMN_ID = "_id";
 	// evaluations table columns
 	public static final String COLUMN_CATEGORY = "category";
 	public static final String COLUMN_TIMESTAMP = "timestamp";
-	// history table columns
-	public static final String COLUMN_HISTORY_CATEGORY = "category";
-	public static final String COLUMN_HISTORY_TIMESTAMP = "timestamp";
-	public static final String COLUMN_HISTORY_AVGA = "avga";
-	public static final String COLUMN_HISTORY_MINA = "mina";
-	public static final String COLUMN_HISTORY_MAXA = "maxa";
-	public static final String COLUMN_HISTORY_STDA = "stda";
-	public static final String COLUMN_HISTORY_AVGG = "avgg";
-	public static final String COLUMN_HISTORY_MING = "ming";
-	public static final String COLUMN_HISTORY_MAXG = "maxg";
-	public static final String COLUMN_HISTORY_STDG = "stdg";
-
-	// evaluations table creation query
-	private static final String CREATE_TABLE_EVALUATIONS = "CREATE TABLE IF NOT EXISTS "
-			+ TABLE_EVALUATIONS
-			+ " ("
-			+ COLUMN_ID
-			+ " INTEGER PRIMARY KEY AUTOINCREMENT, "
-			+ COLUMN_TIMESTAMP
-			+ " INT NOT NULL, " + COLUMN_CATEGORY + " TEXT);";
+	public static final String COLUMN_AVGA = "avga";
+	public static final String COLUMN_MINA = "mina";
+	public static final String COLUMN_MAXA = "maxa";
+	public static final String COLUMN_STDA = "stda";
+	public static final String COLUMN_AVGG = "avgg";
+	public static final String COLUMN_MING = "ming";
+	public static final String COLUMN_MAXG = "maxg";
+	public static final String COLUMN_STDG = "stdg";
 
 	// history table creation query
-	private static final String CREATE_TABLE_HISTORY = "CREATE TABLE IF NOT EXISTS "
-			+ TABLE_HISTORY
+	private static final String CREATE_TABLE_EVALUATIONS = "CREATE TABLE IF NOT EXISTS "
+			+ TABLE_EVALUATIONS
 			+ " ("
 			+ COLUMN_ID
 			+ " INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -46,19 +33,18 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 			+ " INT NOT NULL, "
 			+ COLUMN_CATEGORY
 			+ " TEXT, "
-			+ COLUMN_HISTORY_AVGA
+			+ COLUMN_AVGA
 			+ " REAL, "
-			+ COLUMN_HISTORY_MINA
+			+ COLUMN_MINA
 			+ " REAL, "
-			+ COLUMN_HISTORY_MAXA
+			+ COLUMN_MAXA
 			+ " REAL, "
-			+ COLUMN_HISTORY_STDA
+			+ COLUMN_STDA
 			+ " REAL, "
-			+ COLUMN_HISTORY_AVGG
+			+ COLUMN_AVGG
 			+ " REAL, "
-			+ COLUMN_HISTORY_MING
-			+ " REAL, "
-			+ COLUMN_HISTORY_MAXG + " REAL, " + COLUMN_HISTORY_STDG + " REAL);";
+			+ COLUMN_MING
+			+ " REAL, " + COLUMN_MAXG + " REAL, " + COLUMN_STDG + " REAL);";
 
 	public DatabaseOpenHelper(Context context) {
 		super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -68,7 +54,6 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 	@Override
 	public void onCreate(SQLiteDatabase db) {
 		db.execSQL(CREATE_TABLE_EVALUATIONS);
-		db.execSQL(CREATE_TABLE_HISTORY);
 	}
 
 	@Override
