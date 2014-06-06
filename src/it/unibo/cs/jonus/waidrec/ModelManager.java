@@ -180,8 +180,6 @@ public class ModelManager {
 		try {
 			writer = new BufferedWriter(new FileWriter(filesDir.getPath()
 					+ File.separator + TEMP_FILE_NAME, false));
-			Log.v("ModelManager", "file path: " + filesDir.getPath()
-					+ File.separator + TEMP_FILE_NAME);
 			if (append) {
 				writer.write("");
 			} else {

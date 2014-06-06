@@ -33,7 +33,6 @@ public class TrainingService extends Service {
 			// Write instance to temp file
 
 			try {
-				Log.v("TrainingService", "new instance");
 				modelManager.writeInstance(instance);
 			} catch (IOException e) {
 				new AlertDialog.Builder(context).setTitle("Error")
