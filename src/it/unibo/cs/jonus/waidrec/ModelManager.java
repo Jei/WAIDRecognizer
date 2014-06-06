@@ -11,11 +11,12 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 
-import android.annotation.SuppressLint;
 import android.content.res.AssetManager;
 import android.util.Log;
 import weka.classifiers.Classifier;
 import weka.classifiers.trees.RandomForest;
+import weka.core.Attribute;
+import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ArffLoader;
@@ -27,15 +28,54 @@ public class ModelManager {
 	public static final String HISTORY_FILE_NAME = "history.arff";
 	public static final String MODEL_FILE_NAME = "randomforest.model";
 
+	private File filesDir;
+	private FastVector fvWekaAttributes;
+	private Instances writingSet;
+
+	public ModelManager(File filesDir) {
+		this.filesDir = filesDir;
+
+		// Declare the numeric attributes
+		Attribute Attribute1 = new Attribute("avga");
+		Attribute Attribute2 = new Attribute("avgg");
+		Attribute Attribute3 = new Attribute("maxa");
+		Attribute Attribute4 = new Attribute("maxg");
+		Attribute Attribute5 = new Attribute("mina");
+		Attribute Attribute6 = new Attribute("ming");
+		Attribute Attribute7 = new Attribute("stda");
+		Attribute Attribute8 = new Attribute("stdg");
+
+		// Declare the class attribute along with its values
+		FastVector fvClassVal = new FastVector(4);
+		fvClassVal.addElement("walking");
+		fvClassVal.addElement("car");
+		fvClassVal.addElement("train");
+		fvClassVal.addElement("idle");
+		Attribute ClassAttribute = new Attribute("theClass", fvClassVal);
+
+		// Declare the feature vector
+		fvWekaAttributes = new FastVector(9);
+		fvWekaAttributes.addElement(Attribute1);
+		fvWekaAttributes.addElement(Attribute2);
+		fvWekaAttributes.addElement(Attribute3);
+		fvWekaAttributes.addElement(Attribute4);
+		fvWekaAttributes.addElement(Attribute5);
+		fvWekaAttributes.addElement(Attribute6);
+		fvWekaAttributes.addElement(Attribute7);
+		fvWekaAttributes.addElement(Attribute8);
+		fvWekaAttributes.addElement(ClassAttribute);
+		
+		writingSet = new Instances("Rel", fvWekaAttributes, 1);
+		writingSet.setClassIndex(8);
+	}
+
 	public File getClassificationModel() {
-		return new File("/data/data/it.unibo.cs.jonus.waidrec/files/"
-				+ MODEL_FILE_NAME);
+		return new File(filesDir.getPath() + File.separator + MODEL_FILE_NAME);
 	}
 
 	public RandomForest getRandomForestClassifier() throws Exception {
-		return (RandomForest) weka.core.SerializationHelper
-				.read("/data/data/it.unibo.cs.jonus.waidrec/files/"
-						+ MODEL_FILE_NAME);
+		return (RandomForest) weka.core.SerializationHelper.read(filesDir
+				.getPath() + File.separator + MODEL_FILE_NAME);
 	}
 
 	public void addClass(String className) {
@@ -71,9 +111,9 @@ public class ModelManager {
 	}
 
 	// Appends an instance to the temp file
-	public void writeInstance(Instance newInstance, File filesDir)
-			throws IOException {
-		File vehicleFile = new File(filesDir.getPath() + "/temp.arff");
+	public void writeInstance(Instance newInstance) throws IOException {
+		File vehicleFile = new File(filesDir.getPath() + File.separator
+				+ TEMP_FILE_NAME);
 		BufferedWriter writer = null;
 
 		try {
@@ -86,12 +126,66 @@ public class ModelManager {
 
 	}
 
+	// Appends a VehicleInstance to the temp file
+	public void writeInstance(VehicleInstance newInstance) throws IOException {
+		File vehicleFile = new File(filesDir.getPath() + File.separator
+				+ TEMP_FILE_NAME);
+		BufferedWriter writer = null;
+
+		// Create the instance
+		Instance inst = new Instance(9);
+		for (int i = 0; i < 8; i++) {
+			inst.setMissing((Attribute) fvWekaAttributes.elementAt(i));
+		}
+
+		String category = newInstance.getCategory();
+		MagnitudeFeatures accelFeatures = newInstance.getAccelFeatures();
+		MagnitudeFeatures gyroFeatures = newInstance.getGyroFeatures();
+
+		if (accelFeatures != null) {
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(0),
+					accelFeatures.getAverage());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(2),
+					accelFeatures.getMaximum());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(4),
+					accelFeatures.getMinimum());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(6),
+					accelFeatures.getStandardDeviation());
+		}
+		if (gyroFeatures != null) {
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(1),
+					gyroFeatures.getAverage());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(3),
+					gyroFeatures.getMaximum());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(5),
+					gyroFeatures.getMinimum());
+			inst.setValue((Attribute) fvWekaAttributes.elementAt(7),
+					gyroFeatures.getStandardDeviation());
+		}
+
+		inst.setValue((Attribute) fvWekaAttributes.elementAt(8), category);
+		writingSet.add(inst);
+
+		try {
+			writer = new BufferedWriter(new FileWriter(vehicleFile, true));
+			writer.write(writingSet.firstInstance().toString());
+			writer.newLine();
+		} finally {
+			writer.close();
+		}
+		
+		writingSet.delete();
+
+	}
+
 	// Erase the temp file
-	public void resetTempFile(File filesDir, boolean append) throws IOException {
+	public void resetTempFile(boolean append) throws IOException {
 		BufferedWriter writer = null;
 		try {
-			writer = new BufferedWriter(new FileWriter(filesDir + "/temp.arff",
-					false));
+			writer = new BufferedWriter(new FileWriter(filesDir.getPath()
+					+ File.separator + TEMP_FILE_NAME, false));
+			Log.v("ModelManager", "file path: " + filesDir.getPath()
+					+ File.separator + TEMP_FILE_NAME);
 			if (append) {
 				writer.write("");
 			} else {
@@ -174,8 +268,7 @@ public class ModelManager {
 	// Copies all the arff files for the standard vehicles from assets/ to
 	// files/
 	// This will erase any custom arff file for those vehicles
-	public void resetFromAssets(AssetManager assets, File filesDir)
-			throws IOException {
+	public void resetFromAssets(AssetManager assets) throws IOException {
 		FileInputStream walkingAsset;
 		FileInputStream carAsset;
 		FileInputStream trainAsset;
@@ -202,8 +295,7 @@ public class ModelManager {
 
 	// Generates a new model using weka, appending the arff files of every
 	// vehicle class
-	@SuppressLint("SdCardPath")
-	public void generateModel(File filesDir) throws Exception {
+	public void generateModel() throws Exception {
 		Instances walkingInstances;
 		Instances carInstances;
 		Instances trainInstances;
@@ -257,21 +349,12 @@ public class ModelManager {
 		randomForestClassifier.buildClassifier(appendedInstances);
 		Log.v("ModelManager", "model generated");
 		// Write the new model to file
-		// FIXME do not use hardcoded path
 		ObjectOutputStream output = new ObjectOutputStream(
-				new FileOutputStream(
-						"/data/data/it.unibo.cs.jonus.waidrec/files/"
-								+ MODEL_FILE_NAME));
-		/*
-		 * ObjectOutputStream externalOutput = new ObjectOutputStream( new
-		 * FileOutputStream( "/sdcard/waidrec/randomforest.model"));
-		 */
+				new FileOutputStream(filesDir.getPath() + File.separator
+						+ MODEL_FILE_NAME));
 		output.writeObject(randomForestClassifier);
-		// externalOutput.writeObject(randomForestClassifier);
 		output.flush();
-		// externalOutput.flush();
 		output.close();
-		// externalOutput.close();
 		Log.v("ModelManager", "model wrote to file");
 
 	}
