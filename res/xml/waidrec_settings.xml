@@ -17,6 +17,6 @@
             android:defaultValue="idle"
             android:key="training_current_vehicle"/>
         <Preference
-            android:defaultValue="@id/appendRadioButton"
-            android:key="training_current_write_mode"/>
+            android:defaultValue="false"
+            android:key="training_current_append"/>
     </PreferenceScreen>

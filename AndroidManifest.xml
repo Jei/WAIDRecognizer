@@ -82,6 +82,14 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="it.unibo.cs.jonus.waidrec.RecognizerActivity" />
         </activity>
+        <activity
+            android:name="it.unibo.cs.jonus.waidrec.TrainingSettingsActivity"
+            android:label="@string/title_activity_training_settings"
+            android:parentActivityName="it.unibo.cs.jonus.waidrec.TrainingActivity" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="it.unibo.cs.jonus.waidrec.TrainingActivity" />
+        </activity>
     </application>
 
 </manifest>

@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
@@ -22,10 +23,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
@@ -38,7 +39,6 @@ public class TrainingActivity extends Activity {
 
 	private RadioGroup writeModeGroup;
 	private Spinner vehicleSpinner;
-	private EditText trainingFrequencyInput;
 	private RadioButton overwriteRadio;
 	private RadioButton appendRadio;
 	private Button startButton;
@@ -67,7 +67,7 @@ public class TrainingActivity extends Activity {
 	private static final int MODE_GENERATING = 2;
 	private static final String KEY_TRAINING_ISRUNNING = "training_isrunning";
 	private static final String KEY_TRAINING_CURRENT_VEHICLE = "training_current_vehicle";
-	private static final String KEY_TRAINING_CURRENT_WRITE_MODE = "training_current_write_mode";
+	private static final String KEY_TRAINING_CURRENT_APPEND = "training_current_append";
 
 	@SuppressLint("HandlerLeak")
 	private Handler threadHandler = new Handler() {
@@ -107,7 +107,8 @@ public class TrainingActivity extends Activity {
 								getText(NOTIFICATION_MODEL_GENERATION_EXCEPTION))
 						.show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
-				showNotification(NOTIFICATION_MODEL_GENERATION_EXCEPTION, true, false);
+				showNotification(NOTIFICATION_MODEL_GENERATION_EXCEPTION, true,
+						false);
 
 				break;
 			default:
@@ -117,7 +118,8 @@ public class TrainingActivity extends Activity {
 								getText(NOTIFICATION_MODEL_GENERATION_ERROR))
 						.show();
 				hideNotification(NOTIFICATION_GENERATING_MODEL);
-				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true, false);
+				showNotification(NOTIFICATION_MODEL_GENERATION_ERROR, true,
+						false);
 
 				break;
 			}
@@ -142,7 +144,7 @@ public class TrainingActivity extends Activity {
 			Message message = new Message();
 			// Generate new model
 			try {
-				modelManager.generateModel(getFilesDir());
+				modelManager.generateModel();
 				Log.v("resetModel", "model generated");
 				// Operations completed correctly, return 0
 				message.arg1 = 0;
@@ -175,9 +177,9 @@ public class TrainingActivity extends Activity {
 			Message message = new Message();
 			// Reset original arff files and regenerate model
 			try {
-				modelManager.resetFromAssets(getAssets(), getFilesDir());
+				modelManager.resetFromAssets(getAssets());
 				Log.v("resetModel", "assets reset");
-				modelManager.generateModel(getFilesDir());
+				modelManager.generateModel();
 				Log.v("resetModel", "model generated");
 				// Operations completed correctly, return 0
 				message.arg1 = 0;
@@ -206,7 +208,6 @@ public class TrainingActivity extends Activity {
 		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 
 		writeModeGroup = (RadioGroup) findViewById(R.id.modeRadioGroup);
-		trainingFrequencyInput = (EditText) findViewById(R.id.trainingFreqInput);
 		vehicleSpinner = (Spinner) findViewById(R.id.classesSpinner);
 		overwriteRadio = (RadioButton) findViewById(R.id.overwriteRadioButton);
 		appendRadio = (RadioButton) findViewById(R.id.appendRadioButton);
@@ -219,7 +220,7 @@ public class TrainingActivity extends Activity {
 		context = this;
 
 		// Get model manager
-		modelManager = new ModelManager();
+		modelManager = new ModelManager(getFilesDir());
 
 		// Get notification manager
 		notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -259,14 +260,35 @@ public class TrainingActivity extends Activity {
 				.getStringArray(R.array.default_classes_keys));
 		vehicleSpinner.setSelection(vehiclesArray.indexOf(sharedPrefs
 				.getString(KEY_TRAINING_CURRENT_VEHICLE, "idle")));
-		writeModeGroup.check(sharedPrefs.getInt(
-				KEY_TRAINING_CURRENT_WRITE_MODE, R.id.appendRadioButton));
+		if (sharedPrefs.getBoolean(KEY_TRAINING_CURRENT_APPEND, false)) {
+			writeModeGroup.check(R.id.appendRadioButton);
+		} else {
+			writeModeGroup.check(R.id.overwriteRadioButton);
+		}
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
-		// getMenuInflater().inflate(R.menu.training, menu);
+		getMenuInflater().inflate(R.menu.training, menu);
+		return true;
+	}
+
+	// Start activities if selected from the menu
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case R.id.action_training_settings:
+			if (!generating) {
+				Intent settingsActivity = new Intent(context,
+						TrainingSettingsActivity.class);
+				startActivity(settingsActivity);
+			}
+			break;
+		default:
+			break;
+		}
+
 		return true;
 	}
 
@@ -274,8 +296,7 @@ public class TrainingActivity extends Activity {
 		boolean isServiceRunning = sharedPrefs.getBoolean(
 				KEY_TRAINING_ISRUNNING, false);
 
-		if (!isServiceRunning && !generating
-				&& trainingFrequencyInput.getText().length() != 0) {
+		if (!isServiceRunning && !generating) {
 			// Get the selected radio button for write mode
 			int writeMode = ((RadioGroup) findViewById(R.id.modeRadioGroup))
 					.getCheckedRadioButtonId();
@@ -296,54 +317,7 @@ public class TrainingActivity extends Activity {
 					new DialogInterface.OnClickListener() {
 						@Override
 						public void onClick(DialogInterface dialog, int which) {
-							// Get training frequency
-							int trainingFrequency = Integer
-									.parseInt(trainingFrequencyInput.getText()
-											.toString());
-							// Get the selected item key from the vehicles
-							// spinner
-							String vehicle = getResources().getStringArray(
-									R.array.default_classes_keys)[vehicleSpinner
-									.getSelectedItemPosition()];
-							sharedPrefs
-									.edit()
-									.putString(KEY_TRAINING_CURRENT_VEHICLE,
-											vehicle).commit();
-							// Get the selected radio button for write mode
-							int writeMode = ((RadioGroup) findViewById(R.id.modeRadioGroup))
-									.getCheckedRadioButtonId();
-							sharedPrefs
-									.edit()
-									.putInt(KEY_TRAINING_CURRENT_WRITE_MODE,
-											writeMode).commit();
-							// Create and bind to the new TrainingService
-							Intent serviceIntent = new Intent(
-									TrainingActivity.this,
-									TrainingService.class);
-							// Add extra informations for the service
-							serviceIntent.putExtra("class", vehicle);
-							serviceIntent.putExtra("frequency",
-									trainingFrequency);
-							switch (writeMode) {
-							case R.id.appendRadioButton:
-								serviceIntent.putExtra("append", true);
-								break;
-							case R.id.overwriteRadioButton:
-								serviceIntent.putExtra("append", false);
-								break;
-							}
-
-							startService(serviceIntent);
-
-							// Update the UI
-							setUIMode(MODE_TRAINING);
-
-							Toast.makeText(TrainingActivity.this,
-									R.string.training_service_started,
-									Toast.LENGTH_SHORT).show();
-
-							showNotification(NOTIFICATION_TRAINING_RUNNING,
-									false, true);
+							performDelayedStart();
 						}
 					});
 			confirmDialog.setNegativeButton(android.R.string.cancel,
@@ -355,6 +329,73 @@ public class TrainingActivity extends Activity {
 					});
 			confirmDialog.show();
 		}
+	}
+
+	private void performDelayedStart() {
+		String st = sharedPrefs.getString(
+				TrainingSettingsActivity.KEY_TRN_START_DELAY, "10");
+		long startingTime = Integer.parseInt(st) * 1000;
+
+		final ProgressDialog countdownDialog = new ProgressDialog(this);
+		countdownDialog.setTitle("Starting training");
+		countdownDialog.setMessage(st);
+		countdownDialog.setCancelable(false);
+		countdownDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel",
+				new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.dismiss();
+					}
+				});
+		countdownDialog.show();
+
+		new CountDownTimer(startingTime, 1000) {
+			@Override
+			public void onTick(long millisUntilFinished) {
+				countdownDialog.setMessage("" + (millisUntilFinished / 1000));
+			}
+
+			@Override
+			public void onFinish() {
+				performStart();
+				countdownDialog.dismiss();
+			}
+		}.start();
+	}
+
+	private void performStart() {
+		// Get the selected vehicle
+		String vehicle = getResources().getStringArray(
+				R.array.default_classes_keys)[vehicleSpinner
+				.getSelectedItemPosition()];
+		sharedPrefs.edit().putString(KEY_TRAINING_CURRENT_VEHICLE, vehicle)
+				.commit();
+		// Get the write mode
+		int writeMode = ((RadioGroup) findViewById(R.id.modeRadioGroup))
+				.getCheckedRadioButtonId();
+		switch (writeMode) {
+		case R.id.appendRadioButton:
+			sharedPrefs.edit().putBoolean(KEY_TRAINING_CURRENT_APPEND, true)
+					.commit();
+			break;
+		case R.id.overwriteRadioButton:
+			sharedPrefs.edit().putBoolean(KEY_TRAINING_CURRENT_APPEND, false)
+					.commit();
+			break;
+		}
+
+		// Create and bind to the new TrainingService
+		Intent serviceIntent = new Intent(TrainingActivity.this,
+				TrainingService.class);
+		startService(serviceIntent);
+
+		// Update the UI
+		setUIMode(MODE_TRAINING);
+
+		Toast.makeText(TrainingActivity.this,
+				R.string.training_service_started, Toast.LENGTH_SHORT).show();
+
+		showNotification(NOTIFICATION_TRAINING_RUNNING, false, true);
 	}
 
 	public void stopTraining(View view) {
@@ -383,38 +424,24 @@ public class TrainingActivity extends Activity {
 			// Get the write mode and the vehicle from the preferences
 			String vehicle = sharedPrefs.getString(
 					KEY_TRAINING_CURRENT_VEHICLE, "idle");
-			int writeMode = sharedPrefs.getInt(KEY_TRAINING_CURRENT_WRITE_MODE,
-					R.id.appendRadioButton);
+			boolean append = sharedPrefs.getBoolean(
+					KEY_TRAINING_CURRENT_APPEND, false);
 
 			// Overwrite old vehicle file with the temp file
 			String tempFileName = getFilesDir() + "/temp.arff";
 			String vehicleFileName = getFilesDir() + "/" + vehicle + ".arff";
 			try {
-				switch (writeMode) {
-				case R.id.appendRadioButton:
+				if (append) {
 					modelManager.appendToArffFile(new File(tempFileName),
 							new File(vehicleFileName));
-					break;
-				case R.id.overwriteRadioButton:
+				} else {
 					modelManager.overwriteArffFile(new File(tempFileName),
 							new File(vehicleFileName));
-					break;
 				}
 			} catch (IOException e) {
 				Log.v("TrainingService", "Error while overwriting vehicle file");
 				e.printStackTrace();
 			}
-
-			// TODO write temp file to external storage
-			/*
-			 * try { File externalStorage = new File(Environment
-			 * .getExternalStorageDirectory().toString() + File.separator +
-			 * "waidrec"); externalStorage.mkdirs();
-			 * modelManager.overwriteArffFile(new File(vehicleFileName), new
-			 * File(externalStorage.getPath() + File.separator + vehicle +
-			 * ".arff")); } catch (IOException e) { // TODO Auto-generated catch
-			 * block e.printStackTrace(); }
-			 */
 
 			// Run model generation thread
 			ModelGenRunnable runnable = new ModelGenRunnable(progressDialog);
@@ -459,7 +486,8 @@ public class TrainingActivity extends Activity {
 		}
 	}
 
-	private void showNotification(int textId, boolean autoCancel, boolean onGoing) {
+	private void showNotification(int textId, boolean autoCancel,
+			boolean onGoing) {
 		CharSequence text = getText(textId);
 		CharSequence title = getText(R.string.training_service_label);
 
@@ -475,7 +503,8 @@ public class TrainingActivity extends Activity {
 		Notification notification = new Notification.Builder(this)
 				.setSmallIcon(R.drawable.ic_launcher).setContentText(text)
 				.setContentTitle(title).setContentIntent(contentIntent)
-				.setAutoCancel(autoCancel).setOngoing(onGoing).getNotification();
+				.setAutoCancel(autoCancel).setOngoing(onGoing)
+				.getNotification();
 
 		// Send the notification
 		notificationManager.notify(textId, notification);
@@ -491,7 +520,6 @@ public class TrainingActivity extends Activity {
 		case MODE_AVAILABLE:
 			// Enable all the elements except for Training Stop
 			vehicleSpinner.setEnabled(true);
-			trainingFrequencyInput.setEnabled(true);
 			overwriteRadio.setEnabled(true);
 			appendRadio.setEnabled(true);
 			startButton.setEnabled(true);
@@ -500,7 +528,6 @@ public class TrainingActivity extends Activity {
 			break;
 		case MODE_TRAINING:
 			vehicleSpinner.setEnabled(false);
-			trainingFrequencyInput.setEnabled(false);
 			overwriteRadio.setEnabled(false);
 			appendRadio.setEnabled(false);
 			startButton.setEnabled(false);
@@ -510,7 +537,6 @@ public class TrainingActivity extends Activity {
 		case MODE_GENERATING:
 			// Disable all the elements
 			vehicleSpinner.setEnabled(false);
-			trainingFrequencyInput.setEnabled(false);
 			overwriteRadio.setEnabled(false);
 			appendRadio.setEnabled(false);
 			startButton.setEnabled(false);

@@ -48,6 +48,11 @@
     <string name="title_activity_recognizer_settings">Recognizer Settings</string>
     <string name="sampling_delay_set_max">Maximum delay limited to </string>
     <string name="sampling_delay_set_min">minimum delay limited to </string>
+    <string name="start_delay_set_max">Maximum delay limited to </string>
+    <string name="start_delay_set_min">minimum delay limited to </string>
+    <string name="pref_training_start_delay_title">Training start delay</string>
+    <string name="pref_training_start_delay_desc">The number of seconds before the training starts</string>
+    <string name="title_activity_training_settings">Training Settings</string>
 
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>

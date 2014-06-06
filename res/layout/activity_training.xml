@@ -42,31 +42,11 @@
         android:onClick="resetModel"
         android:text="@string/reset_default_model" />
 
-    <EditText
-        android:id="@+id/trainingFreqInput"
-        android:layout_width="80dp"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/trainingFreqLabel"
-        android:layout_centerHorizontal="true"
-        android:ems="10"
-        android:inputType="number"
-        android:text="@string/default_training_freq" />
-
-    <TextView
-        android:id="@+id/trainingFreqLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/classesSpinner"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="17dp"
-        android:text="@string/training_freq_label"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
-
     <RadioGroup
         android:id="@+id/modeRadioGroup"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/trainingFreqInput"
+        android:layout_below="@+id/classesSpinner"
         android:layout_centerHorizontal="true" >
 
         <RadioButton
