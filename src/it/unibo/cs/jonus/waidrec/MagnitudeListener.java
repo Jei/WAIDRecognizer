@@ -50,14 +50,15 @@ public class MagnitudeListener implements SensorEventListener {
 
 	/**
 	 * Generate a new set of features from the generated magnitudes
-	 * @return a MagnitudeFeatures object, or null if there were no sensor readings
+	 * 
+	 * @return a MagnitudeFeatures object, or null if there were no sensor
+	 *         readings
 	 */
 	public MagnitudeFeatures getFeatures() {
+		MagnitudeFeatures mf = new MagnitudeFeatures();
 		// check array size
 		if (magnitudeArray.size() > 0) {
 			// generate the set of features from the array of magnitudes
-			MagnitudeFeatures mf = new MagnitudeFeatures();
-			
 			double sum = 0;
 			double max = Double.MIN_VALUE;
 			double min = Double.MAX_VALUE;
@@ -76,10 +77,9 @@ public class MagnitudeListener implements SensorEventListener {
 			mf.setAverage(avg);
 			mf.setStandardDeviation(std);
 
-			return mf;
-		} else {
-			return null;
 		}
+
+		return mf;
 	}
 
 	/*
