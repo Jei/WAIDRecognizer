@@ -116,7 +116,7 @@ public class HistoryGraphFragment extends Fragment {
 
 		XYMultipleSeriesDataset chartDataset = null;
 		double[] limits = { 0, 0, 0, 0 };
-		int[] colors = { Color.CYAN, Color.YELLOW, Color.MAGENTA, Color.BLUE };
+		int[] colors = { Color.CYAN, Color.MAGENTA, Color.BLUE };
 		switch (type) {
 		case CHART_CATEGORIES:
 			// Generate labels for the series
@@ -149,34 +149,36 @@ public class HistoryGraphFragment extends Fragment {
 			limits[3] = chartDataset.getSeriesAt(0).getMaxY() + 0.2;
 			break;
 		case CHART_ACCELEROMETER:
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < 3; i++) {
 				XYSeriesRenderer renderer = new XYSeriesRenderer();
 				renderer.setPointStyle(PointStyle.CIRCLE);
 				renderer.setFillPoints(true);
 				renderer.setColor(colors[i]);
 				chartRenderer.addSeriesRenderer(renderer);
 			}
+			chartRenderer.setYLabels(10);
 
 			chartDataset = getAccelerometerData();
 
 			// Set limits
-			limits[2] = chartDataset.getSeriesAt(3).getMinY() - 1;
-			limits[3] = chartDataset.getSeriesAt(3).getMaxY() + 1;
+			limits[2] = chartDataset.getSeriesAt(1).getMinY() - 1;
+			limits[3] = chartDataset.getSeriesAt(2).getMaxY() + 1;
 			break;
 		case CHART_GYROSCOPE:
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < 3; i++) {
 				XYSeriesRenderer renderer = new XYSeriesRenderer();
 				renderer.setPointStyle(PointStyle.CIRCLE);
 				renderer.setFillPoints(true);
 				renderer.setColor(colors[i]);
 				chartRenderer.addSeriesRenderer(renderer);
 			}
+			chartRenderer.setYLabels(10);
 
 			chartDataset = getGyroscopeData();
 
 			// Set limits
-			limits[2] = chartDataset.getSeriesAt(3).getMinY() - 0.5;
-			limits[3] = chartDataset.getSeriesAt(3).getMaxY() + 0.5;
+			limits[2] = chartDataset.getSeriesAt(1).getMinY() - 0.5;
+			limits[3] = chartDataset.getSeriesAt(2).getMaxY() + 0.5;
 			break;
 		}
 		limits[0] = chartDataset.getSeriesAt(0).getMinX() - 100000;
@@ -191,7 +193,7 @@ public class HistoryGraphFragment extends Fragment {
 		chartRenderer.setYAxisMax(limits[3]);
 
 		return ChartFactory.getTimeChartView(getActivity(), chartDataset,
-				chartRenderer, "HH:mm:ss");
+				chartRenderer, getDateFormat(limits[0], limits[1]));
 
 	}
 
@@ -226,12 +228,10 @@ public class HistoryGraphFragment extends Fragment {
 		TimeSeries avgaSeries = new TimeSeries("Average");
 		TimeSeries minaSeries = new TimeSeries("Minimum");
 		TimeSeries maxaSeries = new TimeSeries("Maximum");
-		TimeSeries stdaSeries = new TimeSeries("Standard Deviation");
 
 		dataset.addSeries(avgaSeries);
 		dataset.addSeries(minaSeries);
 		dataset.addSeries(maxaSeries);
-		dataset.addSeries(stdaSeries);
 		for (int i = 0; i < currentHistoryList.size(); i++) {
 			HistoryItem item = currentHistoryList.get(i);
 			Long timestamp = item.getTimestamp();
@@ -239,12 +239,10 @@ public class HistoryGraphFragment extends Fragment {
 			Double avga = accelFeatures.getAverage();
 			Double maxa = accelFeatures.getMaximum();
 			Double mina = accelFeatures.getMinimum();
-			Double stda = accelFeatures.getStandardDeviation();
 
 			avgaSeries.add(timestamp.doubleValue(), avga);
 			minaSeries.add(timestamp.doubleValue(), mina);
 			maxaSeries.add(timestamp.doubleValue(), maxa);
-			stdaSeries.add(timestamp.doubleValue(), stda);
 
 		}
 
@@ -256,12 +254,10 @@ public class HistoryGraphFragment extends Fragment {
 		TimeSeries avggSeries = new TimeSeries("Average");
 		TimeSeries mingSeries = new TimeSeries("Minimum");
 		TimeSeries maxgSeries = new TimeSeries("Maximum");
-		TimeSeries stdgSeries = new TimeSeries("Standard Deviation");
 
 		dataset.addSeries(avggSeries);
 		dataset.addSeries(mingSeries);
 		dataset.addSeries(maxgSeries);
-		dataset.addSeries(stdgSeries);
 		for (int i = 0; i < currentHistoryList.size(); i++) {
 			HistoryItem item = currentHistoryList.get(i);
 			Long timestamp = item.getTimestamp();
@@ -269,12 +265,10 @@ public class HistoryGraphFragment extends Fragment {
 			Double avgg = gyroFeatures.getAverage();
 			Double maxg = gyroFeatures.getMaximum();
 			Double ming = gyroFeatures.getMinimum();
-			Double stdg = gyroFeatures.getStandardDeviation();
 
 			avggSeries.add(timestamp.doubleValue(), avgg);
 			mingSeries.add(timestamp.doubleValue(), ming);
 			maxgSeries.add(timestamp.doubleValue(), maxg);
-			stdgSeries.add(timestamp.doubleValue(), stdg);
 
 		}
 
@@ -314,8 +308,20 @@ public class HistoryGraphFragment extends Fragment {
 		renderer.setPointSize(8);
 		renderer.setShowGridY(true);
 		renderer.setClickEnabled(false);
-		renderer.setXLabels(10);
+		renderer.setXLabels(6);
 
 		return renderer;
 	}
+	
+	private String getDateFormat(double min, double max) {
+		String format = "HH:mm:ss";
+		
+		double timespan = max - min;
+		if(timespan > 1000 * 60 * 60 * 24) {
+			format = "dd MM yyyy";
+		}
+		
+		return format;
+	}
+	
 }
