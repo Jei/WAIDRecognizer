@@ -1,6 +1,5 @@
 package it.unibo.cs.jonus.waidrec;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -370,18 +369,6 @@ public class RecognizerActivity extends Activity {
 
 		// Set current classification to none
 		currentClassification = "none";
-
-		// Append temp data to history
-		String tempFileName = getFilesDir() + File.separator
-				+ ModelManager.TEMP_FILE_NAME;
-		try {
-			File historyFile = new File(getFilesDir() + File.separator
-					+ ModelManager.HISTORY_FILE_NAME);
-			modelManager.appendToArffFile(new File(tempFileName), historyFile);
-		} catch (IOException e) {
-			Log.v("TrainingService", "Error while overwriting vehicle file");
-			e.printStackTrace();
-		}
 
 		// Set start/stop buttons
 		startServiceButton.setEnabled(true);

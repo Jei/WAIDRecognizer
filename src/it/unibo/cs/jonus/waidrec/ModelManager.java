@@ -25,7 +25,6 @@ import weka.core.converters.ConverterUtils.DataSource;
 public class ModelManager {
 
 	public static final String TEMP_FILE_NAME = "temp.arff";
-	public static final String HISTORY_FILE_NAME = "history.arff";
 	public static final String MODEL_FILE_NAME = "randomforest.model";
 
 	private File filesDir;
