@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 
@@ -26,6 +27,8 @@ public class ModelManager {
 
 	public static final String TEMP_FILE_NAME = "temp.arff";
 	public static final String MODEL_FILE_NAME = "randomforest.model";
+	private static final String VEHICLES_FILE_NAME = "vehicles";
+	private static final String DEFAULT_VEHICLES_FILE_NAME = "default_vehicles";
 
 	private File filesDir;
 	private FastVector fvWekaAttributes;
@@ -101,11 +104,11 @@ public class ModelManager {
 		}
 	}
 
-	public void addArff(String vehicleName) {
+	private void addArff(String vehicleName) {
 		// TODO aggiungi file arff per veicolo
 	}
 
-	public void removeArff(String vehicleName) {
+	private void removeArff(String vehicleName) {
 		// TODO rimuovi file arff per veicolo
 	}
 
@@ -262,28 +265,27 @@ public class ModelManager {
 	// files/
 	// This will erase any custom arff file for those vehicles
 	public void resetFromAssets(AssetManager assets) throws IOException {
-		FileInputStream walkingAsset;
-		FileInputStream carAsset;
-		FileInputStream trainAsset;
-		FileInputStream idleAsset;
-
-		// Get application assets
-		walkingAsset = assets.openFd("walking_1000lines.gif")
+		// Copy all the vehicle files specified in default_vehicles
+		FileInputStream vehicleAsset;
+		FileInputStream in = assets.openFd(DEFAULT_VEHICLES_FILE_NAME)
 				.createInputStream();
-		carAsset = assets.openFd("car_1000lines.gif").createInputStream();
-		trainAsset = assets.openFd("train_1000lines.gif").createInputStream();
-		idleAsset = assets.openFd("idle_1000lines.gif").createInputStream();
-		// Copy the arff files for walking, car and train from assets to app
-		// files directory
-		File newWalkingFile = new File(filesDir.getPath() + "/walking.arff");
-		File newCarFile = new File(filesDir.getPath() + "/car.arff");
-		File newTrainFile = new File(filesDir.getPath() + "/train.arff");
-		File newIdleFile = new File(filesDir.getPath() + "/idle.arff");
-		copyAssetToFile(walkingAsset, newWalkingFile);
-		copyAssetToFile(carAsset, newCarFile);
-		copyAssetToFile(trainAsset, newTrainFile);
-		copyAssetToFile(idleAsset, newIdleFile);
+		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
+		String vehicle = reader.readLine();
+		while (vehicle != null) {
+			vehicleAsset = assets.openFd(vehicle + "_1000lines.gif")
+					.createInputStream();
+			File newVehicleFile = new File(filesDir.getPath() + "/" + vehicle
+					+ ".arff");
+			copyAssetToFile(vehicleAsset, newVehicleFile);
+			
+			vehicle = reader.readLine();
+		}
+
+		// Finally copy default_vehicles
+		File newVehiclesFile = new File(filesDir.getPath() + "/"
+				+ VEHICLES_FILE_NAME);
+		copyAssetToFile(in, newVehiclesFile);
 	}
 
 	// Generates a new model using weka, appending the arff files of every
