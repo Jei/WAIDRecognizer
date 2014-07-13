@@ -265,12 +265,17 @@ public class ModelManager {
 	// files/
 	// This will erase any custom arff file for those vehicles
 	public void resetFromAssets(AssetManager assets) throws IOException {
-		// Copy all the vehicle files specified in default_vehicles
 		FileInputStream vehicleAsset;
 		FileInputStream in = assets.openFd(DEFAULT_VEHICLES_FILE_NAME)
 				.createInputStream();
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
+		// Copy default_vehicles
+		File newVehiclesFile = new File(filesDir.getPath() + "/"
+				+ VEHICLES_FILE_NAME);
+		copyAssetToFile(in, newVehiclesFile);
+
+		// Copy all the vehicle files specified in default_vehicles
 		String vehicle = reader.readLine();
 		while (vehicle != null) {
 			vehicleAsset = assets.openFd(vehicle + "_1000lines.gif")
@@ -278,62 +283,54 @@ public class ModelManager {
 			File newVehicleFile = new File(filesDir.getPath() + "/" + vehicle
 					+ ".arff");
 			copyAssetToFile(vehicleAsset, newVehicleFile);
-			
+
 			vehicle = reader.readLine();
 		}
-
-		// Finally copy default_vehicles
-		File newVehiclesFile = new File(filesDir.getPath() + "/"
-				+ VEHICLES_FILE_NAME);
-		copyAssetToFile(in, newVehiclesFile);
+		reader.close();
 	}
 
 	// Generates a new model using weka, appending the arff files of every
 	// vehicle class
 	public void generateModel() throws Exception {
-		Instances walkingInstances;
-		Instances carInstances;
-		Instances trainInstances;
-		Instances idleInstances;
-		DataSource walkingSource;
-		DataSource carSource;
-		DataSource trainSource;
-		DataSource idleSource;
+		Instances vehicleInstances;
+		DataSource vehicleSource;
 		Instances appendedInstances;
 		ArffLoader arffLoader = new ArffLoader();
 
-		Classifier randomForestClassifier = new RandomForest();
+		Classifier classifier = new RandomForest();
+
+		FileInputStream in = new FileInputStream(new File(filesDir.getPath()
+				+ File.separator + VEHICLES_FILE_NAME));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
 		// Get the instances for all the files
-		arffLoader.setSource(new File(filesDir.getPath() + "/walking.arff"));
-		walkingInstances = arffLoader.getDataSet();
-		walkingSource = new DataSource(walkingInstances);
-		arffLoader.setSource(new File(filesDir.getPath() + "/car.arff"));
-		carInstances = arffLoader.getDataSet();
-		carSource = new DataSource(carInstances);
-		arffLoader.setSource(new File(filesDir.getPath() + "/train.arff"));
-		trainInstances = arffLoader.getDataSet();
-		trainSource = new DataSource(trainInstances);
-		arffLoader.setSource(new File(filesDir.getPath() + "/idle.arff"));
-		idleInstances = arffLoader.getDataSet();
-		idleSource = new DataSource(idleInstances);
-		Log.v("ModelManager", "instances loaded");
+		boolean first = true;
+		appendedInstances = null;
+		String vehicle = reader.readLine();
+		while (vehicle != null) {
+			arffLoader.setSource(new File(filesDir.getPath() + File.separator
+					+ vehicle + ".arff"));
+			vehicleInstances = arffLoader.getDataSet();
+			vehicleSource = new DataSource(vehicleInstances);
 
-		// Append the instances
-		appendedInstances = walkingSource.getStructure();
-		while (walkingSource.hasMoreElements(appendedInstances)) {
-			appendedInstances.add(walkingSource.nextElement(appendedInstances));
+			// Get the structure of the instances
+			if (first) {
+				appendedInstances = vehicleSource.getStructure();
+				first = false;
+			}
+
+			int i = 0;
+			while (vehicleSource.hasMoreElements(appendedInstances)) {
+				appendedInstances.add(vehicleSource
+						.nextElement(appendedInstances));
+				i++;
+			}
+
+			vehicle = reader.readLine();
 		}
-		while (carSource.hasMoreElements(appendedInstances)) {
-			appendedInstances.add(carSource.nextElement(appendedInstances));
-		}
-		while (trainSource.hasMoreElements(appendedInstances)) {
-			appendedInstances.add(trainSource.nextElement(appendedInstances));
-		}
-		while (idleSource.hasMoreElements(appendedInstances)) {
-			appendedInstances.add(idleSource.nextElement(appendedInstances));
-		}
-		Log.v("ModelManager", "instances appended");
+		reader.close();
+
+		Log.v("ModelManager", "instances loaded");
 		Log.v("ModelManager",
 				"total instances:" + appendedInstances.numInstances());
 
@@ -341,13 +338,13 @@ public class ModelManager {
 		appendedInstances.setClassIndex(appendedInstances.numAttributes() - 1);
 
 		// Generate model using a classifier
-		randomForestClassifier.buildClassifier(appendedInstances);
+		classifier.buildClassifier(appendedInstances);
 		Log.v("ModelManager", "model generated");
 		// Write the new model to file
 		ObjectOutputStream output = new ObjectOutputStream(
 				new FileOutputStream(filesDir.getPath() + File.separator
 						+ MODEL_FILE_NAME));
-		output.writeObject(randomForestClassifier);
+		output.writeObject(classifier);
 		output.flush();
 		output.close();
 		Log.v("ModelManager", "model wrote to file");
