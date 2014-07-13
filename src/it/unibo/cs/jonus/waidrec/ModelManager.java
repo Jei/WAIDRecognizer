@@ -7,12 +7,15 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 
 import android.content.res.AssetManager;
+import android.text.TextUtils;
 import android.util.Log;
 import weka.classifiers.Classifier;
 import weka.classifiers.trees.RandomForest;
@@ -178,7 +181,24 @@ public class ModelManager {
 
 	// Erase the temp file
 	public void resetTempFile(boolean append) throws IOException {
+		ArrayList<String> vehiclesList = new ArrayList<String>();
 		BufferedWriter writer = null;
+		FileInputStream in = new FileInputStream(new File(filesDir.getPath()
+				+ File.separator + VEHICLES_FILE_NAME));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+		// Get the list of vehicles
+		String vehicle = reader.readLine();
+		while (vehicle != null) {
+			String vt = vehicle;
+			vt.replaceAll("\\s","");
+			if (!vt.equals("")) {
+				vehiclesList.add(vehicle);
+			}
+			vehicle = reader.readLine();
+		}
+		reader.close();
+
 		try {
 			writer = new BufferedWriter(new FileWriter(filesDir.getPath()
 					+ File.separator + TEMP_FILE_NAME, false));
@@ -204,7 +224,9 @@ public class ModelManager {
 				writer.newLine();
 				writer.write("@ATTRIBUTE stdg NUMERIC");
 				writer.newLine();
-				writer.write("@ATTRIBUTE class        {walking,car,train,idle}");
+				writer.write("@ATTRIBUTE class        {");
+				writer.write(TextUtils.join(",", vehiclesList));
+				writer.write("}");
 				writer.newLine();
 				writer.newLine();
 				writer.write("@DATA");
@@ -266,23 +288,50 @@ public class ModelManager {
 	// This will erase any custom arff file for those vehicles
 	public void resetFromAssets(AssetManager assets) throws IOException {
 		FileInputStream vehicleAsset;
-		FileInputStream in = assets.openFd(DEFAULT_VEHICLES_FILE_NAME)
-				.createInputStream();
-		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+		FileInputStream in;
+		BufferedReader reader;
+
+		// Delete all the .arff files
+		File[] arffFiles = filesDir.listFiles(new FilenameFilter() {
+			File f;
+
+			public boolean accept(File dir, String name) {
+				if (name.endsWith(".arff")) {
+					return true;
+				}
+				f = new File(dir.getAbsolutePath() + "/" + name);
+
+				return f.isDirectory();
+			}
+		});
+		for (File f : arffFiles) {
+			f.delete();
+		}
 
 		// Copy default_vehicles
+		in = assets.openFd(DEFAULT_VEHICLES_FILE_NAME).createInputStream();
+		reader = new BufferedReader(new InputStreamReader(in));
 		File newVehiclesFile = new File(filesDir.getPath() + "/"
 				+ VEHICLES_FILE_NAME);
 		copyAssetToFile(in, newVehiclesFile);
+		reader.close();
 
 		// Copy all the vehicle files specified in default_vehicles
+		in = new FileInputStream(new File(filesDir.getPath() + File.separator
+				+ VEHICLES_FILE_NAME));
+		reader = new BufferedReader(new InputStreamReader(in));
 		String vehicle = reader.readLine();
 		while (vehicle != null) {
-			vehicleAsset = assets.openFd(vehicle + "_1000lines.gif")
-					.createInputStream();
-			File newVehicleFile = new File(filesDir.getPath() + "/" + vehicle
-					+ ".arff");
-			copyAssetToFile(vehicleAsset, newVehicleFile);
+			String vt = vehicle;
+			vt.replaceAll("\\s","");
+			if (!vt.equals("")) {
+				vehicleAsset = assets.openFd(vehicle + "_1000lines.gif")
+						.createInputStream();
+				File newVehicleFile = new File(filesDir.getPath() + "/"
+						+ vehicle + ".arff");
+				copyAssetToFile(vehicleAsset, newVehicleFile);
+
+			}
 
 			vehicle = reader.readLine();
 		}
@@ -308,22 +357,24 @@ public class ModelManager {
 		appendedInstances = null;
 		String vehicle = reader.readLine();
 		while (vehicle != null) {
-			arffLoader.setSource(new File(filesDir.getPath() + File.separator
-					+ vehicle + ".arff"));
-			vehicleInstances = arffLoader.getDataSet();
-			vehicleSource = new DataSource(vehicleInstances);
+			String vt = vehicle;
+			vt.replaceAll("\\s","");
+			if (!vt.equals("")) {
+				arffLoader.setSource(new File(filesDir.getPath()
+						+ File.separator + vehicle + ".arff"));
+				vehicleInstances = arffLoader.getDataSet();
+				vehicleSource = new DataSource(vehicleInstances);
 
-			// Get the structure of the instances
-			if (first) {
-				appendedInstances = vehicleSource.getStructure();
-				first = false;
-			}
+				// Get the structure of the instances
+				if (first) {
+					appendedInstances = vehicleSource.getStructure();
+					first = false;
+				}
 
-			int i = 0;
-			while (vehicleSource.hasMoreElements(appendedInstances)) {
-				appendedInstances.add(vehicleSource
-						.nextElement(appendedInstances));
-				i++;
+				while (vehicleSource.hasMoreElements(appendedInstances)) {
+					appendedInstances.add(vehicleSource
+							.nextElement(appendedInstances));
+				}
 			}
 
 			vehicle = reader.readLine();
