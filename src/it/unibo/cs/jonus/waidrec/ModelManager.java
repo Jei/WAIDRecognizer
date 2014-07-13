@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -181,23 +182,8 @@ public class ModelManager {
 
 	// Erase the temp file
 	public void resetTempFile(boolean append) throws IOException {
-		ArrayList<String> vehiclesList = new ArrayList<String>();
+		ArrayList<String> vehiclesList = getVehicles();
 		BufferedWriter writer = null;
-		FileInputStream in = new FileInputStream(new File(filesDir.getPath()
-				+ File.separator + VEHICLES_FILE_NAME));
-		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-
-		// Get the list of vehicles
-		String vehicle = reader.readLine();
-		while (vehicle != null) {
-			String vt = vehicle;
-			vt.replaceAll("\\s","");
-			if (!vt.equals("")) {
-				vehiclesList.add(vehicle);
-			}
-			vehicle = reader.readLine();
-		}
-		reader.close();
 
 		try {
 			writer = new BufferedWriter(new FileWriter(filesDir.getPath()
@@ -290,6 +276,7 @@ public class ModelManager {
 		FileInputStream vehicleAsset;
 		FileInputStream in;
 		BufferedReader reader;
+		ArrayList<String> vehiclesList;
 
 		// Delete all the .arff files
 		File[] arffFiles = filesDir.listFiles(new FilenameFilter() {
@@ -317,25 +304,14 @@ public class ModelManager {
 		reader.close();
 
 		// Copy all the vehicle files specified in default_vehicles
-		in = new FileInputStream(new File(filesDir.getPath() + File.separator
-				+ VEHICLES_FILE_NAME));
-		reader = new BufferedReader(new InputStreamReader(in));
-		String vehicle = reader.readLine();
-		while (vehicle != null) {
-			String vt = vehicle;
-			vt.replaceAll("\\s","");
-			if (!vt.equals("")) {
-				vehicleAsset = assets.openFd(vehicle + "_1000lines.gif")
-						.createInputStream();
-				File newVehicleFile = new File(filesDir.getPath() + "/"
-						+ vehicle + ".arff");
-				copyAssetToFile(vehicleAsset, newVehicleFile);
-
-			}
-
-			vehicle = reader.readLine();
+		vehiclesList = getVehicles();
+		for (String vehicle : vehiclesList) {
+			vehicleAsset = assets.openFd(vehicle + "_1000lines.gif")
+					.createInputStream();
+			File newVehicleFile = new File(filesDir.getPath() + "/"
+					+ vehicle + ".arff");
+			copyAssetToFile(vehicleAsset, newVehicleFile);
 		}
-		reader.close();
 	}
 
 	// Generates a new model using weka, appending the arff files of every
@@ -345,41 +321,30 @@ public class ModelManager {
 		DataSource vehicleSource;
 		Instances appendedInstances;
 		ArffLoader arffLoader = new ArffLoader();
+		ArrayList<String> vehiclesList = getVehicles();
 
 		Classifier classifier = new RandomForest();
-
-		FileInputStream in = new FileInputStream(new File(filesDir.getPath()
-				+ File.separator + VEHICLES_FILE_NAME));
-		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
 		// Get the instances for all the files
 		boolean first = true;
 		appendedInstances = null;
-		String vehicle = reader.readLine();
-		while (vehicle != null) {
-			String vt = vehicle;
-			vt.replaceAll("\\s","");
-			if (!vt.equals("")) {
-				arffLoader.setSource(new File(filesDir.getPath()
-						+ File.separator + vehicle + ".arff"));
-				vehicleInstances = arffLoader.getDataSet();
-				vehicleSource = new DataSource(vehicleInstances);
+		for (String vehicle : vehiclesList) {
+			arffLoader.setSource(new File(filesDir.getPath()
+					+ File.separator + vehicle + ".arff"));
+			vehicleInstances = arffLoader.getDataSet();
+			vehicleSource = new DataSource(vehicleInstances);
 
-				// Get the structure of the instances
-				if (first) {
-					appendedInstances = vehicleSource.getStructure();
-					first = false;
-				}
-
-				while (vehicleSource.hasMoreElements(appendedInstances)) {
-					appendedInstances.add(vehicleSource
-							.nextElement(appendedInstances));
-				}
+			// Get the structure of the instances
+			if (first) {
+				appendedInstances = vehicleSource.getStructure();
+				first = false;
 			}
 
-			vehicle = reader.readLine();
+			while (vehicleSource.hasMoreElements(appendedInstances)) {
+				appendedInstances.add(vehicleSource
+						.nextElement(appendedInstances));
+			}
 		}
-		reader.close();
 
 		Log.v("ModelManager", "instances loaded");
 		Log.v("ModelManager",
@@ -400,6 +365,40 @@ public class ModelManager {
 		output.close();
 		Log.v("ModelManager", "model wrote to file");
 
+	}
+
+	/**
+	 * Returns the ArrayList of the vehicles known by this ModelManager
+	 * @return the list of supported vehicles
+	 */
+	public ArrayList<String> getVehicles() {
+		ArrayList<String> vehiclesList = new ArrayList<String>();
+
+		try {
+			FileInputStream in = new FileInputStream(new File(
+					filesDir.getPath() + File.separator + VEHICLES_FILE_NAME));
+			BufferedReader reader = new BufferedReader(
+					new InputStreamReader(in));
+
+			// Read from the vehicles file
+			String vehicle = reader.readLine();
+			while (vehicle != null) {
+				// Escape whitespace lines
+				String vt = vehicle.replaceAll("\\s+", "");
+				if (!vt.equals("")) {
+					vehiclesList.add(vehicle);
+				}
+				vehicle = reader.readLine();
+			}
+
+			reader.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return vehiclesList;
 	}
 
 }
