@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -16,7 +15,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 
 import android.content.res.AssetManager;
-import android.text.TextUtils;
 import android.util.Log;
 import weka.classifiers.Classifier;
 import weka.classifiers.trees.RandomForest;
@@ -25,6 +23,7 @@ import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ArffLoader;
+import weka.core.converters.ArffSaver;
 import weka.core.converters.ConverterUtils.DataSource;
 
 public class ModelManager {
@@ -52,11 +51,11 @@ public class ModelManager {
 		Attribute Attribute8 = new Attribute("stdg");
 
 		// Declare the class attribute along with its values
+		ArrayList<String> vehiclesList = getVehicles();
 		FastVector fvClassVal = new FastVector(4);
-		fvClassVal.addElement("walking");
-		fvClassVal.addElement("car");
-		fvClassVal.addElement("train");
-		fvClassVal.addElement("idle");
+		for (String vehicle : vehiclesList) {
+			fvClassVal.addElement(vehicle);
+		}
 		Attribute ClassAttribute = new Attribute("theClass", fvClassVal);
 
 		// Declare the feature vector
@@ -84,11 +83,17 @@ public class ModelManager {
 				.getPath() + File.separator + MODEL_FILE_NAME);
 	}
 
-	public void addClass(String className) {
-		// TODO aggiungi classe alla lista delle classi di veicoli
+	public void addVehicle(String vehicleName) {
+		ArrayList<String> vehiclesList = getVehicles();
+
+		// Check string and if already registered
+		String vt = vehicleName.replaceAll("\\s+", "");
+		if (!vehiclesList.contains(vehicleName) && !vt.equals("")) {
+			// TODO Add the string to the header of the other vehicle files
+		}
 	}
 
-	public void removeClass(String className) {
+	public void removeVehicle(String vehicleName) {
 		// TODO rimuovi classe dalla lista delle classi di veicoli
 	}
 
@@ -106,14 +111,6 @@ public class ModelManager {
 			source.close();
 			os.close();
 		}
-	}
-
-	private void addArff(String vehicleName) {
-		// TODO aggiungi file arff per veicolo
-	}
-
-	private void removeArff(String vehicleName) {
-		// TODO rimuovi file arff per veicolo
 	}
 
 	// Appends an instance to the temp file
@@ -181,90 +178,75 @@ public class ModelManager {
 	}
 
 	// Erase the temp file
-	public void resetTempFile(boolean append) throws IOException {
+	public void resetTempFile() throws IOException {
+		// Write the header of the instances to the temp file
+		ArffSaver saver = new ArffSaver();
+		writingSet.delete();
+		saver.setInstances(writingSet);
+		saver.setFile(new File(filesDir.getPath() + File.separator
+				+ TEMP_FILE_NAME));
+		saver.writeBatch();
+	}
+
+	public void overwriteVehicle(String vehicleName) throws IOException {
+		File vehicleFile = new File(filesDir.getPath() + File.separator
+				+ vehicleName + ".arff");
+		File tempFile = new File(filesDir.getPath() + File.separator
+				+ TEMP_FILE_NAME);
 		ArrayList<String> vehiclesList = getVehicles();
-		BufferedWriter writer = null;
 
-		try {
-			writer = new BufferedWriter(new FileWriter(filesDir.getPath()
-					+ File.separator + TEMP_FILE_NAME, false));
-			if (append) {
-				writer.write("");
-			} else {
-				writer.write("@RELATION sensor");
-				writer.newLine();
-				writer.newLine();
-				writer.write("@ATTRIBUTE avga NUMERIC");
-				writer.newLine();
-				writer.write("@ATTRIBUTE avgg NUMERIC");
-				writer.newLine();
-				writer.write("@ATTRIBUTE maxa NUMERIC");
-				writer.newLine();
-				writer.write("@ATTRIBUTE maxg NUMERIC");
-				writer.newLine();
-				writer.write("@ATTRIBUTE mina NUMERIC");
-				writer.newLine();
-				writer.write("@ATTRIBUTE ming NUMERIC");
-				writer.newLine();
-				writer.write("@ATTRIBUTE stda NUMERIC");
-				writer.newLine();
-				writer.write("@ATTRIBUTE stdg NUMERIC");
-				writer.newLine();
-				writer.write("@ATTRIBUTE class        {");
-				writer.write(TextUtils.join(",", vehiclesList));
-				writer.write("}");
-				writer.newLine();
-				writer.newLine();
-				writer.write("@DATA");
-				writer.newLine();
-			}
-		} finally {
-			writer.close();
-		}
-	}
-
-	public void overwriteArffFile(File tempFile, File vehicleFile)
-			throws IOException {
-		BufferedReader reader = null;
-		BufferedWriter writer = null;
-
-		try {
-			reader = new BufferedReader(new FileReader(tempFile));
-			// Create FileWriter in overwrite mode
-			writer = new BufferedWriter(new FileWriter(vehicleFile, false));
-			String line;
-
-			while ((line = reader.readLine()) != null) {
-				writer.write(line);
-				writer.newLine();
-			}
-
-		} finally {
-			reader.close();
-			writer.close();
+		// Check if the vehicle is registered
+		if (vehiclesList.contains(vehicleName)) {
+			// Load the instances from the temp file
+			ArffLoader arffLoader = new ArffLoader();
+			arffLoader.setFile(tempFile);
+			Instances vehicleInstances = arffLoader.getDataSet();
+			// Save the instances to the vehicle file
+			ArffSaver saver = new ArffSaver();
+			saver.setFile(vehicleFile);
+			saver.setInstances(vehicleInstances);
+			saver.writeBatch();
 		}
 
 	}
 
-	public void appendToArffFile(File tempFile, File vehicleFile)
-			throws IOException {
-		BufferedReader reader = null;
-		BufferedWriter writer = null;
+	public void appendToVehicle(String vehicleName) throws Exception {
+		File vehicleFile = new File(filesDir.getPath() + File.separator
+				+ vehicleName + ".arff");
+		File tempFile = new File(filesDir.getPath() + File.separator
+				+ TEMP_FILE_NAME);
+		ArrayList<String> vehiclesList = getVehicles();
 
-		try {
-			reader = new BufferedReader(new FileReader(tempFile));
-			// Create FileWriter in append mode
-			writer = new BufferedWriter(new FileWriter(vehicleFile, true));
-			String line;
+		// Check if the vehicle is registered
+		if (vehiclesList.contains(vehicleName)) {
+			Instances appendedInstances;
+			// Load the instances from the temp file
+			ArffLoader tempLoader = new ArffLoader();
+			tempLoader.setFile(tempFile);
+			Instances tempInstances = tempLoader.getDataSet();
+			// Load the instances from the vehicle file
+			ArffLoader vehicleLoader = new ArffLoader();
+			vehicleLoader.setFile(vehicleFile);
+			Instances vehicleInstances = vehicleLoader.getDataSet();
 
-			while ((line = reader.readLine()) != null) {
-				writer.write(line);
-				writer.newLine();
+			// Append the instances
+			DataSource tempSource = new DataSource(tempInstances);
+			DataSource vehicleSource = new DataSource(vehicleInstances);
+			appendedInstances = tempSource.getStructure();
+			while (vehicleSource.hasMoreElements(appendedInstances)) {
+				appendedInstances.add(vehicleSource
+						.nextElement(appendedInstances));
+			}
+			while (tempSource.hasMoreElements(appendedInstances)) {
+				appendedInstances
+						.add(tempSource.nextElement(appendedInstances));
 			}
 
-		} finally {
-			reader.close();
-			writer.close();
+			// Save the instances to the vehicle file
+			ArffSaver saver = new ArffSaver();
+			saver.setFile(vehicleFile);
+			saver.setInstances(appendedInstances);
+			saver.writeBatch();
 		}
 
 	}
@@ -308,8 +290,8 @@ public class ModelManager {
 		for (String vehicle : vehiclesList) {
 			vehicleAsset = assets.openFd(vehicle + "_1000lines.gif")
 					.createInputStream();
-			File newVehicleFile = new File(filesDir.getPath() + "/"
-					+ vehicle + ".arff");
+			File newVehicleFile = new File(filesDir.getPath() + "/" + vehicle
+					+ ".arff");
 			copyAssetToFile(vehicleAsset, newVehicleFile);
 		}
 	}
@@ -329,8 +311,8 @@ public class ModelManager {
 		boolean first = true;
 		appendedInstances = null;
 		for (String vehicle : vehiclesList) {
-			arffLoader.setSource(new File(filesDir.getPath()
-					+ File.separator + vehicle + ".arff"));
+			arffLoader.setSource(new File(filesDir.getPath() + File.separator
+					+ vehicle + ".arff"));
 			vehicleInstances = arffLoader.getDataSet();
 			vehicleSource = new DataSource(vehicleInstances);
 
@@ -369,6 +351,7 @@ public class ModelManager {
 
 	/**
 	 * Returns the ArrayList of the vehicles known by this ModelManager
+	 * 
 	 * @return the list of supported vehicles
 	 */
 	public ArrayList<String> getVehicles() {

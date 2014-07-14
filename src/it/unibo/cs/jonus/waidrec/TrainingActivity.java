@@ -1,6 +1,5 @@
 package it.unibo.cs.jonus.waidrec;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -427,19 +426,17 @@ public class TrainingActivity extends Activity {
 			boolean append = sharedPrefs.getBoolean(
 					KEY_TRAINING_CURRENT_APPEND, false);
 
-			// Overwrite old vehicle file with the temp file
-			String tempFileName = getFilesDir() + "/temp.arff";
-			String vehicleFileName = getFilesDir() + "/" + vehicle + ".arff";
 			try {
 				if (append) {
-					modelManager.appendToArffFile(new File(tempFileName),
-							new File(vehicleFileName));
+					modelManager.appendToVehicle(vehicle);
 				} else {
-					modelManager.overwriteArffFile(new File(tempFileName),
-							new File(vehicleFileName));
+					modelManager.overwriteVehicle(vehicle);
 				}
 			} catch (IOException e) {
-				Log.v("TrainingService", "Error while overwriting vehicle file");
+				Log.v("TrainingService", "Error while writing vehicle file");
+				e.printStackTrace();
+			} catch (Exception e) {
+				Log.v("TrainingService", "Error while writing vehicle file");
 				e.printStackTrace();
 			}
 

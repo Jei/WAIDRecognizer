@@ -102,7 +102,6 @@ public class TrainingService extends Service {
 
 		// Get shared preferences
 		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-		boolean append = sharedPrefs.getBoolean("training_current_append", false);
 		String vehicle = sharedPrefs.getString("training_current_vehicle", "idle");
 		String sd = sharedPrefs.getString(TrainingSettingsActivity.KEY_TRN_SAMPLING_DELAY, "5");
 		int samplingDelay = Integer.parseInt(sd);
@@ -114,7 +113,7 @@ public class TrainingService extends Service {
 		// If the service wasn't running, reset the temp file
 		if (!wasRunning) {
 			try {
-				modelManager.resetTempFile(append);
+				modelManager.resetTempFile();
 			} catch (IOException e) {
 				Log.v("TrainingService", "Error while resetting temp file");
 				e.printStackTrace();
