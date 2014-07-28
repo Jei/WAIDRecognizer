@@ -6,9 +6,10 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class DatabaseOpenHelper extends SQLiteOpenHelper {
 
-	private static final int DATABASE_VERSION = 4;
+	private static final int DATABASE_VERSION = 5;
 	public static final String DATABASE_NAME = "waid.db";
 	public static final String TABLE_EVALUATIONS = "evaluations";
+	public static final String TABLE_TRAINING_DATA = "training_data";
 
 	public static final String COLUMN_ID = "_id";
 	// evaluations table columns
@@ -46,6 +47,29 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 			+ COLUMN_MING
 			+ " REAL, " + COLUMN_MAXG + " REAL, " + COLUMN_STDG + " REAL);";
 
+	// training data table creation query
+	private static final String CREATE_TABLE_TRAINING_DATA = "CREATE TABLE IF NOT EXISTS "
+			+ TABLE_EVALUATIONS
+			+ " ("
+			+ COLUMN_ID
+			+ " INTEGER PRIMARY KEY AUTOINCREMENT, "
+			+ COLUMN_TIMESTAMP
+			+ " INT NOT NULL, "
+			+ COLUMN_CATEGORY
+			+ " TEXT, "
+			+ COLUMN_AVGA
+			+ " REAL, "
+			+ COLUMN_MINA
+			+ " REAL, "
+			+ COLUMN_MAXA
+			+ " REAL, "
+			+ COLUMN_STDA
+			+ " REAL, "
+			+ COLUMN_AVGG
+			+ " REAL, "
+			+ COLUMN_MING
+			+ " REAL, " + COLUMN_MAXG + " REAL, " + COLUMN_STDG + " REAL);";
+
 	public DatabaseOpenHelper(Context context) {
 		super(context, DATABASE_NAME, null, DATABASE_VERSION);
 
@@ -54,11 +78,13 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 	@Override
 	public void onCreate(SQLiteDatabase db) {
 		db.execSQL(CREATE_TABLE_EVALUATIONS);
+		db.execSQL(CREATE_TABLE_TRAINING_DATA);
 	}
 
 	@Override
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_EVALUATIONS);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_TRAINING_DATA);
 		onCreate(db);
 	}
 

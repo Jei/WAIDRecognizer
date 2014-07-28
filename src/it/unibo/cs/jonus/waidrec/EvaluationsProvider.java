@@ -19,6 +19,9 @@ public class EvaluationsProvider extends ContentProvider {
 	private static final int LAST_EVALUATION = 2;
 	private static final int ALL_EVALUATIONS = 3;
 	private static final int ERASE_EVALUATIONS = 666;
+	private static final int INSERT_TRAINING_ITEM = 11;
+	private static final int ALL_TRAINING_DATA = 13;
+	private static final int ERASE_TRAINING_DATA = 999;
 	private static final String AUTHORITY = "it.unibo.cs.jonus.waidrec.evaluationsprovider";
 	private static final String BASE_PATH = "evaluations";
 	public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY
@@ -46,17 +49,21 @@ public class EvaluationsProvider extends ContentProvider {
 	@Override
 	public int delete(Uri uri, String selection, String[] selectionArgs) {
 		int uriType = sUriMatcher.match(uri);
+		int count = 0;
+		SQLiteDatabase db = database.getWritableDatabase();
 		switch (uriType) {
 		case ERASE_EVALUATIONS:
 			// discard selection values, add sorting
 			selection = null;
+			count = db.delete(DatabaseOpenHelper.TABLE_EVALUATIONS, "1", null);
+			break;
+		case ERASE_TRAINING_DATA:
+			count = db
+					.delete(DatabaseOpenHelper.TABLE_TRAINING_DATA, "1", null);
 			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI: " + uri);
 		}
-
-		SQLiteDatabase db = database.getWritableDatabase();
-		int count = db.delete(DatabaseOpenHelper.TABLE_EVALUATIONS, "1", null);
 
 		return count;
 	}
@@ -86,6 +93,9 @@ public class EvaluationsProvider extends ContentProvider {
 					+ MAX_EVALUATIONS + ")";
 			db.delete(DatabaseOpenHelper.TABLE_EVALUATIONS, query, null);
 			break;
+		case INSERT_TRAINING_ITEM:
+			id = db.insert(DatabaseOpenHelper.TABLE_TRAINING_DATA, null, values);
+			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI: " + uri);
 		}
@@ -109,7 +119,6 @@ public class EvaluationsProvider extends ContentProvider {
 		SQLiteQueryBuilder queryBuilder = new SQLiteQueryBuilder();
 
 		checkColumns(projection);
-		queryBuilder.setTables(DatabaseOpenHelper.TABLE_EVALUATIONS);
 
 		int uriType = sUriMatcher.match(uri);
 		String limit = null;
@@ -118,12 +127,20 @@ public class EvaluationsProvider extends ContentProvider {
 			// discard selection values, add sorting
 			selection = null;
 			sortOrder = "_id DESC";
+			queryBuilder.setTables(DatabaseOpenHelper.TABLE_EVALUATIONS);
 			break;
 		case LAST_EVALUATION:
 			// discard selection, add limit and sorting to get last evaluation
 			selection = null;
 			sortOrder = "_id DESC";
+			queryBuilder.setTables(DatabaseOpenHelper.TABLE_EVALUATIONS);
 			limit = "1";
+			break;
+		case ALL_TRAINING_DATA:
+			// discard selection values, add sorting
+			selection = null;
+			sortOrder = "_id DESC";
+			queryBuilder.setTables(DatabaseOpenHelper.TABLE_TRAINING_DATA);
 			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI: " + uri);
