@@ -48,6 +48,23 @@ public class ModelManager {
 		String modelName = mClassifier.getClass().toString();
 		mModelFile = new File(mFilesDir.getPath() + File.separator + modelName
 				+ MODEL_FILE_EXTENSION);
+
+		Runnable deserializationRunnable = new Runnable() {
+
+			@SuppressWarnings("unchecked")
+			public void run() {
+				try {
+					mClassifier = (C) weka.core.SerializationHelper
+							.read(mModelFile.getAbsolutePath());
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		};
+
+		Thread deserializationThread = new Thread(null,
+				deserializationRunnable, "modelOpener", 204800);
+		deserializationThread.start();
 	}
 
 	public ModelManager(Context context) {
@@ -76,7 +93,8 @@ public class ModelManager {
 
 	@SuppressWarnings("unchecked")
 	public <C extends Classifier> C getModel() throws Exception {
-		return (C) weka.core.SerializationHelper.read(mModelFile.getAbsolutePath());
+		return (C) weka.core.SerializationHelper.read(mModelFile
+				.getAbsolutePath());
 	}
 
 	public boolean addVehicle(String vehicleName) {
@@ -219,6 +237,59 @@ public class ModelManager {
 		}
 
 		return vehiclesList;
+	}
+
+	public VehicleInstance classifyInstance(VehicleInstance instance) {
+		Instance inst = new Instance(9);
+		FastVector attributes = getAttributes();
+		MagnitudeFeatures accelFeatures = instance.getAccelFeatures();
+		MagnitudeFeatures gyroFeatures = instance.getGyroFeatures();
+
+		for (int i = 0; i < 9; i++) {
+			inst.setMissing((Attribute) attributes.elementAt(i));
+		}
+
+		if (accelFeatures != null) {
+			inst.setValue((Attribute) attributes.elementAt(0),
+					accelFeatures.getAverage());
+			inst.setValue((Attribute) attributes.elementAt(2),
+					accelFeatures.getMaximum());
+			inst.setValue((Attribute) attributes.elementAt(4),
+					accelFeatures.getMinimum());
+			inst.setValue((Attribute) attributes.elementAt(6),
+					accelFeatures.getStandardDeviation());
+		}
+		if (gyroFeatures != null) {
+			inst.setValue((Attribute) attributes.elementAt(1),
+					gyroFeatures.getAverage());
+			inst.setValue((Attribute) attributes.elementAt(3),
+					gyroFeatures.getMaximum());
+			inst.setValue((Attribute) attributes.elementAt(5),
+					gyroFeatures.getMinimum());
+			inst.setValue((Attribute) attributes.elementAt(7),
+					gyroFeatures.getStandardDeviation());
+		}
+
+		// add the instance
+		Instances classificationSet = new Instances("Rel", attributes, 1);
+		classificationSet.setClassIndex(8);
+		classificationSet.add(inst);
+
+		// do classification
+		double clsLabel = 0;
+		try {
+			if (mClassifier != null) {
+				clsLabel = mClassifier.classifyInstance(classificationSet
+						.instance(0));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		classificationSet.instance(0).setClassValue(clsLabel);
+
+		instance.setCategory(classificationSet.instance(0).toString(8));
+
+		return instance;
 	}
 
 	private FastVector getAttributes() {
