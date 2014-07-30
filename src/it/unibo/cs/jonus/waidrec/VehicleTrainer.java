@@ -117,7 +117,7 @@ public class VehicleTrainer extends VehicleManager {
 	public boolean unregisterVehicleObserver(VehicleObserver observer) {
 		boolean result = false;
 
-		if (!mObservers.contains(observer)) {
+		if (mObservers.contains(observer)) {
 			mObservers.remove(observer);
 			int currentSize = mObservers.size();
 
