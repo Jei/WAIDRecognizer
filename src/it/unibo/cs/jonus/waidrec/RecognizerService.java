@@ -36,7 +36,8 @@ public class RecognizerService extends Service {
 	private WakeLock wakeLock;
 	private static final int SCREEN_OFF_RECEIVER_DELAY = 500;
 
-	private VehicleManager vehicleManager;
+	private VehicleManager mVehicleManager;
+	private ModelManager mModelManager;
 
 	// Broadcast receiver used to listen for "screen off" event
 	private BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
@@ -49,8 +50,8 @@ public class RecognizerService extends Service {
 
 			Runnable runnable = new Runnable() {
 				public void run() {
-					vehicleManager.unregisterVehicleObserver();
-					vehicleManager.registerVehicleObserver(vehicleObserver);
+					mVehicleManager.unregisterVehicleObserver(vehicleObserver);
+					mVehicleManager.registerVehicleObserver(vehicleObserver);
 				}
 			};
 
@@ -80,8 +81,9 @@ public class RecognizerService extends Service {
 				RecognizerSettingsActivity.KEY_REC_SAMPLING_DELAY, "5");
 		int samplingDelay = Integer.parseInt(sdString);
 
-		// Get the vehicle manager
-		vehicleManager = new VehicleManager(this, samplingDelay * 1000);
+		// Get the model and vehicle managers
+		mModelManager = new ModelManager(getApplicationContext());
+		mVehicleManager = new VehicleRecognizer(this, mModelManager, samplingDelay * 1000);
 
 		// Get power manager and partial wake lock
 		powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -103,7 +105,7 @@ public class RecognizerService extends Service {
 		wakeLock.acquire();
 
 		// Start reading from the vehicle manager
-		vehicleManager.registerVehicleObserver(vehicleObserver);
+		mVehicleManager.registerVehicleObserver(vehicleObserver);
 
 	}
 
@@ -115,7 +117,7 @@ public class RecognizerService extends Service {
 		Log.v("ProviderService", "stop");
 
 		// Stop reading from the vehicle manager
-		vehicleManager.unregisterVehicleObserver();
+		mVehicleManager.unregisterVehicleObserver(vehicleObserver);
 
 		// Unregister screen off event listener
 		unregisterReceiver(screenOffReceiver);

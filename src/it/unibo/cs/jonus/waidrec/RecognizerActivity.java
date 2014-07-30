@@ -1,6 +1,10 @@
 package it.unibo.cs.jonus.waidrec;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 
 import android.net.Uri;
@@ -16,9 +20,11 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.AssetManager;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.util.Log;
@@ -38,7 +44,6 @@ public class RecognizerActivity extends Activity {
 	private SharedPreferences sharedPrefs;
 
 	private Boolean generating = false;
-	private ModelManager modelManager;
 	private Thread asyncThread = null;
 
 	private Handler contentProviderHandler = new Handler();
@@ -63,6 +68,14 @@ public class RecognizerActivity extends Activity {
 	private static final int NOTIFICATION_MODEL_GENERATED = R.string.model_generated;
 	private static final int NOTIFICATION_MODEL_GENERATION_ERROR = R.string.model_generation_error;
 	private static final int NOTIFICATION_RECOGNIZER_STARTED = R.string.recognizer_started;
+
+	private static final String[] allColumnsProjection = {
+			DatabaseOpenHelper.COLUMN_TIMESTAMP,
+			DatabaseOpenHelper.COLUMN_CATEGORY, DatabaseOpenHelper.COLUMN_AVGA,
+			DatabaseOpenHelper.COLUMN_MINA, DatabaseOpenHelper.COLUMN_MAXA,
+			DatabaseOpenHelper.COLUMN_STDA, DatabaseOpenHelper.COLUMN_AVGG,
+			DatabaseOpenHelper.COLUMN_MING, DatabaseOpenHelper.COLUMN_MAXG,
+			DatabaseOpenHelper.COLUMN_STDG };
 
 	@SuppressLint("HandlerLeak")
 	private Handler threadHandler = new Handler() {
@@ -129,9 +142,6 @@ public class RecognizerActivity extends Activity {
 		// Get notification manager
 		notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
-		// Create new ModelManager
-		modelManager = new ModelManager(getFilesDir());
-
 		// Runnable for model generation thread
 		class ModelResetRunnable implements Runnable {
 			ProgressDialog dialog;
@@ -145,9 +155,23 @@ public class RecognizerActivity extends Activity {
 				Message message = new Message();
 				// Reset original arff files
 				try {
-					modelManager.resetFromAssets(getAssets());
-					Log.v("resetModel", "assets reset");
-					modelManager.generateModel();
+					// Create new ModelManager
+					ModelManager modelManager = new ModelManager(
+							getApplicationContext());
+
+					// Reset the training data
+					resetFromAssets();
+
+					// Get the VehicleInstances from the Content Provider
+					Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+							+ EvaluationsProvider.PATH_ALL_TRAINING_DATA);
+					Cursor cursor = getContentResolver().query(uri,
+							allColumnsProjection, null, null, null);
+					ArrayList<VehicleInstance> instances = EvaluationsProvider
+							.cursorToVehicleInstanceArray(cursor);
+
+					// Generate the new model from the database data
+					modelManager.generateModel(instances);
 					Log.v("resetModel", "model generated");
 					// Operations completed correctly, return 0
 					message.arg1 = 0;
@@ -381,15 +405,9 @@ public class RecognizerActivity extends Activity {
 	private void updateUI() {
 
 		// Get last evaluation from content provider
-		String[] projection = { DatabaseOpenHelper.COLUMN_TIMESTAMP,
-				DatabaseOpenHelper.COLUMN_CATEGORY,
-				DatabaseOpenHelper.COLUMN_AVGA, DatabaseOpenHelper.COLUMN_MINA,
-				DatabaseOpenHelper.COLUMN_MAXA, DatabaseOpenHelper.COLUMN_STDA,
-				DatabaseOpenHelper.COLUMN_AVGG, DatabaseOpenHelper.COLUMN_MING,
-				DatabaseOpenHelper.COLUMN_MAXG, DatabaseOpenHelper.COLUMN_STDG };
 		Uri uri = Uri.parse(EvaluationsProvider.CONTENT_URI + "/last");
-		Cursor cursor = getContentResolver().query(uri, projection, null, null,
-				null);
+		Cursor cursor = getContentResolver().query(uri, allColumnsProjection,
+				null, null, null);
 		if (cursor == null) {
 			return;
 		}
@@ -464,4 +482,77 @@ public class RecognizerActivity extends Activity {
 		super.onPause();
 	}
 
+	private void resetFromAssets() {
+		AssetManager assets = getAssets();
+		File filesDir = getFilesDir();
+		FileInputStream walkingAsset;
+		FileInputStream carAsset;
+		FileInputStream trainAsset;
+		FileInputStream idleAsset;
+		FileInputStream vehiclesAsset;
+
+		try {
+			// Get assets
+			walkingAsset = assets.openFd("walking_1000lines.gif")
+					.createInputStream();
+			carAsset = assets.openFd("car_1000lines.gif").createInputStream();
+			trainAsset = assets.openFd("train_1000lines.gif")
+					.createInputStream();
+			idleAsset = assets.openFd("idle_1000lines.gif").createInputStream();
+			vehiclesAsset = assets.openFd("vehicles").createInputStream();
+
+			// Copy the arff files to app files directory
+			File newWalkingFile = new File(filesDir.getPath() + "/walking.arff");
+			File newCarFile = new File(filesDir.getPath() + "/car.arff");
+			File newTrainFile = new File(filesDir.getPath() + "/train.arff");
+			File newIdleFile = new File(filesDir.getPath() + "/idle.arff");
+			File newVehiclesFile = new File(filesDir.getPath() + "/vehicles");
+
+			FileInputStream[] streams = { walkingAsset, carAsset, trainAsset,
+					idleAsset, vehiclesAsset };
+			File[] newFiles = { newWalkingFile, newCarFile, newTrainFile,
+					newIdleFile, newVehiclesFile };
+			for (int i = 0; i < newFiles.length; i++) {
+				OutputStream os = null;
+				try {
+					os = new FileOutputStream(newFiles[i]);
+					byte[] buffer = new byte[1024];
+					int length;
+					while ((length = streams[i].read(buffer)) > 0) {
+						os.write(buffer, 0, length);
+					}
+				} finally {
+					streams[i].close();
+					os.close();
+				}
+			}
+
+			File[] vehicleFiles = { newWalkingFile, newCarFile, newTrainFile,
+					newIdleFile };
+			
+			// Erase training data from the database
+			Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+					+ EvaluationsProvider.PATH_ERASE_TRAINING_DATA);
+			getContentResolver().delete(uri, null, null);
+			
+			// Insert the data from the files into the database
+			uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+					+ EvaluationsProvider.PATH_INSERT_TRAINING_ITEM);
+			getContentResolver().delete(uri, null, null);
+			for (File f : vehicleFiles) {
+				ArrayList<VehicleInstance> instances = ModelManager
+						.readArffFile(f);
+
+				for (VehicleInstance i : instances) {
+					ContentValues values = EvaluationsProvider
+							.vehicleInstanceToContentValues(i);
+
+					getContentResolver().insert(
+							EvaluationsProvider.TRAINING_DATA_URI, values);
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }

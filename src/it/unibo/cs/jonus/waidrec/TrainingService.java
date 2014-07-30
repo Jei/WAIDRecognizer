@@ -1,26 +1,23 @@
 package it.unibo.cs.jonus.waidrec;
 
-import java.io.IOException;
-import android.app.AlertDialog;
 import android.app.Service;
 import android.content.BroadcastReceiver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.preference.PreferenceManager;
-import android.util.Log;
 
 public class TrainingService extends Service {
 
 	private SharedPreferences sharedPrefs;
-
-	private Context context;
 
 	private final IBinder mBinder = new MyBinder();
 
@@ -30,17 +27,13 @@ public class TrainingService extends Service {
 
 		@Override
 		public void onNewInstance(VehicleInstance instance) {
-			// Write instance to temp file
+			Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+					+ EvaluationsProvider.PATH_INSERT_TRAINING_ITEM);
 
-			try {
-				modelManager.writeInstance(instance);
-			} catch (IOException e) {
-				new AlertDialog.Builder(context).setTitle("Error")
-						.setMessage("Error while writing to temp Arff file")
-						.show();
-				stopSelf();
-			}
+			ContentValues values = EvaluationsProvider
+					.vehicleInstanceToContentValues(instance);
 
+			getContentResolver().insert(uri, values);
 		}
 	};
 
@@ -59,7 +52,7 @@ public class TrainingService extends Service {
 
 			Runnable runnable = new Runnable() {
 				public void run() {
-					vehicleManager.unregisterVehicleObserver();
+					vehicleManager.unregisterVehicleObserver(vehicleObserver);
 					vehicleManager.registerVehicleObserver(vehicleObserver);
 				}
 			};
@@ -102,31 +95,20 @@ public class TrainingService extends Service {
 
 		// Get shared preferences
 		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-		String vehicle = sharedPrefs.getString("training_current_vehicle", "idle");
-		String sd = sharedPrefs.getString(TrainingSettingsActivity.KEY_TRN_SAMPLING_DELAY, "5");
+		String vehicle = sharedPrefs.getString("training_current_vehicle",
+				"idle");
+		String sd = sharedPrefs.getString(
+				TrainingSettingsActivity.KEY_TRN_SAMPLING_DELAY, "5");
 		int samplingDelay = Integer.parseInt(sd);
-		boolean wasRunning = sharedPrefs.getBoolean("training_isrunning", false);
-		
-		modelManager = new ModelManager(getFilesDir());
-		vehicleManager = new VehicleManager(this, samplingDelay * 1000, vehicle);
-		
-		// If the service wasn't running, reset the temp file
-		if (!wasRunning) {
-			try {
-				modelManager.resetTempFile();
-			} catch (IOException e) {
-				Log.v("TrainingService", "Error while resetting temp file");
-				e.printStackTrace();
-				stopSelf();
-			}
-		}
+
+		modelManager = new ModelManager(this);
+		vehicleManager = new VehicleTrainer(this, modelManager,
+				samplingDelay * 1000, vehicle);
 
 		// Write current service status to shared preferences
 		sharedPrefs.edit().putBoolean("training_isrunning", true).commit();
 
 		vehicleManager.registerVehicleObserver(vehicleObserver);
-
-		context = this;
 
 		// Get power manager and partial wake lock
 		powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -153,7 +135,7 @@ public class TrainingService extends Service {
 		unregisterReceiver(screenOffReceiver);
 
 		// Unregister the vehicle observer
-		vehicleManager.unregisterVehicleObserver();
+		vehicleManager.unregisterVehicleObserver(vehicleObserver);
 
 		// Release partial wake lock
 		if (wakeLock.isHeld()) {

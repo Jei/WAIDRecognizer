@@ -1,9 +1,15 @@
 package it.unibo.cs.jonus.waidrec;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
@@ -16,10 +22,13 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.AssetManager;
+import android.database.Cursor;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -67,6 +76,14 @@ public class TrainingActivity extends Activity {
 	private static final String KEY_TRAINING_ISRUNNING = "training_isrunning";
 	private static final String KEY_TRAINING_CURRENT_VEHICLE = "training_current_vehicle";
 	private static final String KEY_TRAINING_CURRENT_APPEND = "training_current_append";
+
+	private static final String[] allColumnsProjection = {
+			DatabaseOpenHelper.COLUMN_TIMESTAMP,
+			DatabaseOpenHelper.COLUMN_CATEGORY, DatabaseOpenHelper.COLUMN_AVGA,
+			DatabaseOpenHelper.COLUMN_MINA, DatabaseOpenHelper.COLUMN_MAXA,
+			DatabaseOpenHelper.COLUMN_STDA, DatabaseOpenHelper.COLUMN_AVGG,
+			DatabaseOpenHelper.COLUMN_MING, DatabaseOpenHelper.COLUMN_MAXG,
+			DatabaseOpenHelper.COLUMN_STDG };
 
 	@SuppressLint("HandlerLeak")
 	private Handler threadHandler = new Handler() {
@@ -143,7 +160,14 @@ public class TrainingActivity extends Activity {
 			Message message = new Message();
 			// Generate new model
 			try {
-				modelManager.generateModel();
+				// Get the VehicleInstances from the Content Provider
+				Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+						+ EvaluationsProvider.PATH_ALL_TRAINING_DATA);
+				Cursor cursor = getContentResolver().query(uri,
+						allColumnsProjection, null, null, null);
+				ArrayList<VehicleInstance> instances = EvaluationsProvider
+						.cursorToVehicleInstanceArray(cursor);
+				modelManager.generateModel(instances);
 				Log.v("resetModel", "model generated");
 				// Operations completed correctly, return 0
 				message.arg1 = 0;
@@ -163,8 +187,8 @@ public class TrainingActivity extends Activity {
 		}
 	};
 
-	// Runnable for model reset thread
-	private class ModelResetRunnable implements Runnable {
+	// Runnable for model generation thread
+	class ModelResetRunnable implements Runnable {
 		ProgressDialog dialog;
 
 		public ModelResetRunnable(ProgressDialog pd) {
@@ -174,11 +198,26 @@ public class TrainingActivity extends Activity {
 		public void run() {
 			// Prepare message for thread completion
 			Message message = new Message();
-			// Reset original arff files and regenerate model
+			// Reset original arff files
 			try {
-				modelManager.resetFromAssets(getAssets());
-				Log.v("resetModel", "assets reset");
-				modelManager.generateModel();
+				// Create new ModelManager
+				ModelManager modelManager = new ModelManager(
+						getApplicationContext());
+
+				// Reset the training data
+				resetFromAssets();
+
+				// Get the VehicleInstances from the Content Provider
+				Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+						+ EvaluationsProvider.PATH_ALL_TRAINING_DATA);
+				Cursor cursor = getContentResolver().query(uri,
+						allColumnsProjection, null, null, null);
+				ArrayList<VehicleInstance> instances = EvaluationsProvider
+						.cursorToVehicleInstanceArray(cursor);
+				Log.v("TrainingActivity", "Retrieved " + instances.size() + " instances");
+
+				// Generate the new model from the database data
+				modelManager.generateModel(instances);
 				Log.v("resetModel", "model generated");
 				// Operations completed correctly, return 0
 				message.arg1 = 0;
@@ -194,7 +233,6 @@ public class TrainingActivity extends Activity {
 				message.obj = dialog;
 				threadHandler.sendMessage(message);
 			}
-
 		}
 	};
 
@@ -219,7 +257,7 @@ public class TrainingActivity extends Activity {
 		context = this;
 
 		// Get model manager
-		modelManager = new ModelManager(getFilesDir());
+		modelManager = new ModelManager(getApplicationContext());
 
 		// Get notification manager
 		notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -380,6 +418,12 @@ public class TrainingActivity extends Activity {
 		case R.id.overwriteRadioButton:
 			sharedPrefs.edit().putBoolean(KEY_TRAINING_CURRENT_APPEND, false)
 					.commit();
+
+			// Delete entries for vehicle from database
+			String[] arg = { vehicle };
+			Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+					+ EvaluationsProvider.PATH_DELETE_TRAINING_VEHICLE);
+			int count = getContentResolver().delete(uri, null, arg);
 			break;
 		}
 
@@ -419,26 +463,6 @@ public class TrainingActivity extends Activity {
 			hideNotification(NOTIFICATION_TRAINING_RUNNING);
 
 			generating = true;
-
-			// Get the write mode and the vehicle from the preferences
-			String vehicle = sharedPrefs.getString(
-					KEY_TRAINING_CURRENT_VEHICLE, "idle");
-			boolean append = sharedPrefs.getBoolean(
-					KEY_TRAINING_CURRENT_APPEND, false);
-
-			try {
-				if (append) {
-					modelManager.appendToVehicle(vehicle);
-				} else {
-					modelManager.overwriteVehicle(vehicle);
-				}
-			} catch (IOException e) {
-				Log.v("TrainingService", "Error while writing vehicle file");
-				e.printStackTrace();
-			} catch (Exception e) {
-				Log.v("TrainingService", "Error while writing vehicle file");
-				e.printStackTrace();
-			}
 
 			// Run model generation thread
 			ModelGenRunnable runnable = new ModelGenRunnable(progressDialog);
@@ -544,4 +568,77 @@ public class TrainingActivity extends Activity {
 
 	}
 
+	private void resetFromAssets() {
+		AssetManager assets = getAssets();
+		File filesDir = getFilesDir();
+		FileInputStream walkingAsset;
+		FileInputStream carAsset;
+		FileInputStream trainAsset;
+		FileInputStream idleAsset;
+		FileInputStream vehiclesAsset;
+
+		try {
+			// Get assets
+			walkingAsset = assets.openFd("walking_1000lines.gif")
+					.createInputStream();
+			carAsset = assets.openFd("car_1000lines.gif").createInputStream();
+			trainAsset = assets.openFd("train_1000lines.gif")
+					.createInputStream();
+			idleAsset = assets.openFd("idle_1000lines.gif").createInputStream();
+			vehiclesAsset = assets.openFd("vehicles").createInputStream();
+
+			// Copy the arff files to app files directory
+			File newWalkingFile = new File(filesDir.getPath() + "/walking.arff");
+			File newCarFile = new File(filesDir.getPath() + "/car.arff");
+			File newTrainFile = new File(filesDir.getPath() + "/train.arff");
+			File newIdleFile = new File(filesDir.getPath() + "/idle.arff");
+			File newVehiclesFile = new File(filesDir.getPath() + "/vehicles");
+
+			FileInputStream[] streams = { walkingAsset, carAsset, trainAsset,
+					idleAsset, vehiclesAsset };
+			File[] newFiles = { newWalkingFile, newCarFile, newTrainFile,
+					newIdleFile, newVehiclesFile };
+			for (int i = 0; i < newFiles.length; i++) {
+				OutputStream os = null;
+				try {
+					os = new FileOutputStream(newFiles[i]);
+					byte[] buffer = new byte[1024];
+					int length;
+					while ((length = streams[i].read(buffer)) > 0) {
+						os.write(buffer, 0, length);
+					}
+				} finally {
+					streams[i].close();
+					os.close();
+				}
+			}
+
+			File[] vehicleFiles = { newWalkingFile, newCarFile, newTrainFile,
+					newIdleFile };
+			
+			// Erase training data from the database
+			Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+					+ EvaluationsProvider.PATH_ERASE_TRAINING_DATA);
+			getContentResolver().delete(uri, null, null);
+			
+			// Insert the data from the files into the database
+			uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+					+ EvaluationsProvider.PATH_INSERT_TRAINING_ITEM);
+			for (File f : vehicleFiles) {
+				ArrayList<VehicleInstance> instances = ModelManager
+						.readArffFile(f);
+
+				Log.v("TrainingActivity", "Loaded " + instances.size()
+						+ " instances from " + f.getName());
+				for (VehicleInstance i : instances) {
+					ContentValues values = EvaluationsProvider
+							.vehicleInstanceToContentValues(i);
+
+					getContentResolver().insert(uri, values);
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }
