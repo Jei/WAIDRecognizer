@@ -20,6 +20,7 @@ import weka.core.Attribute;
 import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.converters.ArffLoader;
 
 public class ModelManager {
 
@@ -45,7 +46,7 @@ public class ModelManager {
 			e.printStackTrace();
 			mClassifier = new RandomForest();
 		}
-		String modelName = mClassifier.getClass().toString();
+		String modelName = mClassifier.getClass().getSimpleName();
 		mModelFile = new File(mFilesDir.getPath() + File.separator + modelName
 				+ MODEL_FILE_EXTENSION);
 
@@ -71,11 +72,22 @@ public class ModelManager {
 		this(context, RandomForest.class);
 	}
 
+	/**
+	 * Returns the type of classifier used by this ModelManager
+	 * 
+	 * @return the class of the classifier
+	 */
 	@SuppressWarnings("unchecked")
 	public <C extends Classifier> C getClassifierType() {
 		return (C) mClassifier;
 	}
 
+	/**
+	 * Sets the type of classifier to use to generate the model
+	 * 
+	 * @param classifierType
+	 *            the class of the classifier
+	 */
 	public <C extends Classifier> void setClassifierType(Class<C> classifierType) {
 		try {
 			mClassifier = classifierType.newInstance();
@@ -91,12 +103,26 @@ public class ModelManager {
 				+ MODEL_FILE_EXTENSION);
 	}
 
+	/**
+	 * Returns the model currently used by this ModelManager
+	 * 
+	 * @return the model
+	 * @throws Exception
+	 *             if the model file does not exist
+	 */
 	@SuppressWarnings("unchecked")
 	public <C extends Classifier> C getModel() throws Exception {
 		return (C) weka.core.SerializationHelper.read(mModelFile
 				.getAbsolutePath());
 	}
 
+	/**
+	 * Adds a vehicle to the list of supported vehicles
+	 * 
+	 * @param vehicleName
+	 *            the name of the vehicle to add
+	 * @return true if the vehicle is successfully added, false otherwise
+	 */
 	public boolean addVehicle(String vehicleName) {
 		ArrayList<String> vehiclesList = getVehicles();
 		boolean added = false;
@@ -120,6 +146,13 @@ public class ModelManager {
 		return added;
 	}
 
+	/**
+	 * Removes a vehicle from the list of supported vehicles
+	 * 
+	 * @param vehicleName
+	 *            the name of the vehicle to remove
+	 * @return true if the vehicle is successfully removed, false otherwise
+	 */
 	public boolean removeVehicle(String vehicleName) {
 		ArrayList<String> vehiclesList = getVehicles();
 		boolean removed = false;
@@ -146,8 +179,13 @@ public class ModelManager {
 		return removed;
 	}
 
-	// Generates a new model using weka, appending the arff files of every
-	// vehicle class
+	/**
+	 * Trains a classification model using the given list of vehicle instances
+	 * 
+	 * @param vehicleInstances
+	 *            the list of instances
+	 * @throws Exception
+	 */
 	public void generateModel(ArrayList<VehicleInstance> vehicleInstances)
 			throws Exception {
 		Instances wekaInstances;
@@ -239,35 +277,35 @@ public class ModelManager {
 		return vehiclesList;
 	}
 
+	/**
+	 * Classifies the given instance
+	 * 
+	 * @param instance
+	 *            the instance to classify
+	 * @return the modified instance
+	 */
 	public VehicleInstance classifyInstance(VehicleInstance instance) {
 		Instance inst = new Instance(9);
 		FastVector attributes = getAttributes();
 		MagnitudeFeatures accelFeatures = instance.getAccelFeatures();
 		MagnitudeFeatures gyroFeatures = instance.getGyroFeatures();
 
-		for (int i = 0; i < 9; i++) {
-			inst.setMissing((Attribute) attributes.elementAt(i));
+		for (int i = 0; i < 8; i++) {
+			inst.setMissing(i);
 		}
 
 		if (accelFeatures != null) {
-			inst.setValue((Attribute) attributes.elementAt(0),
-					accelFeatures.getAverage());
-			inst.setValue((Attribute) attributes.elementAt(2),
-					accelFeatures.getMaximum());
-			inst.setValue((Attribute) attributes.elementAt(4),
-					accelFeatures.getMinimum());
-			inst.setValue((Attribute) attributes.elementAt(6),
-					accelFeatures.getStandardDeviation());
+			// FIXME attributes don't work here, why?
+			inst.setValue(0, accelFeatures.getAverage());
+			inst.setValue(2, accelFeatures.getMaximum());
+			inst.setValue(4, accelFeatures.getMinimum());
+			inst.setValue(6, accelFeatures.getStandardDeviation());
 		}
 		if (gyroFeatures != null) {
-			inst.setValue((Attribute) attributes.elementAt(1),
-					gyroFeatures.getAverage());
-			inst.setValue((Attribute) attributes.elementAt(3),
-					gyroFeatures.getMaximum());
-			inst.setValue((Attribute) attributes.elementAt(5),
-					gyroFeatures.getMinimum());
-			inst.setValue((Attribute) attributes.elementAt(7),
-					gyroFeatures.getStandardDeviation());
+			inst.setValue(1, gyroFeatures.getAverage());
+			inst.setValue(3, gyroFeatures.getMaximum());
+			inst.setValue(5, gyroFeatures.getMinimum());
+			inst.setValue(7, gyroFeatures.getStandardDeviation());
 		}
 
 		// add the instance
@@ -292,6 +330,65 @@ public class ModelManager {
 		return instance;
 	}
 
+	/**
+	 * Read the vehicle data from a .arff file and return it as a list of
+	 * instances
+	 * 
+	 * @param file
+	 *            a valid .arff file
+	 * @return the list of instances
+	 * @throws IOException
+	 *             if the file is not a valid .arff file
+	 */
+	public static ArrayList<VehicleInstance> readArffFile(File file)
+			throws IOException {
+		ArrayList<VehicleInstance> instances = new ArrayList<VehicleInstance>();
+		ArffLoader arffLoader = new ArffLoader();
+
+		// Get the instances from the file
+		arffLoader.setSource(file);
+		Instances wekaInstances = arffLoader.getDataSet();
+		wekaInstances.setClassIndex(wekaInstances.numAttributes() - 1);
+		for (int i = 0; i < wekaInstances.numInstances(); i++) {
+			// Convert the Instance in a VehicleInstance
+			VehicleInstance vehicleInstance = new VehicleInstance();
+			MagnitudeFeatures accelFeatures = new MagnitudeFeatures();
+			MagnitudeFeatures gyroFeatures = new MagnitudeFeatures();
+			Instance currentInstance = wekaInstances.instance(i);
+
+			accelFeatures.setAverage(currentInstance.value(0));
+			accelFeatures.setMaximum(currentInstance.value(2));
+			accelFeatures.setMinimum(currentInstance.value(4));
+			accelFeatures.setStandardDeviation(currentInstance.value(6));
+			gyroFeatures.setAverage(currentInstance.value(1));
+			gyroFeatures.setMaximum(currentInstance.value(3));
+			gyroFeatures.setMinimum(currentInstance.value(5));
+			gyroFeatures.setStandardDeviation(currentInstance.value(7));
+			vehicleInstance.setAccelFeatures(accelFeatures);
+			vehicleInstance.setGyroFeatures(gyroFeatures);
+			vehicleInstance.setCategory(currentInstance.toString(8));
+
+			// Add the instance to the list
+			instances.add(vehicleInstance);
+		}
+
+		return instances;
+	}
+
+	/**
+	 * Write the given instances as a .arff file
+	 * 
+	 * @param instances
+	 *            the list of instances to write
+	 * @param file
+	 *            a valid file to write
+	 */
+	public static void writeArffFile(ArrayList<VehicleInstance> instances,
+			File file) {
+		// TODO not yet implemented
+	}
+
+	// Get the attributes for the weka instances
 	private FastVector getAttributes() {
 		FastVector wekaAttributes = null;
 
