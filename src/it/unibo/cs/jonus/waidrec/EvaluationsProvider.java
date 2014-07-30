@@ -21,14 +21,22 @@ public class EvaluationsProvider extends ContentProvider {
 	private static final int ERASE_EVALUATIONS = 666;
 	private static final int INSERT_TRAINING_ITEM = 11;
 	private static final int ALL_TRAINING_DATA = 13;
+	private static final int DELETE_TRAINING_VEHICLE = 14;
 	private static final int ERASE_TRAINING_DATA = 999;
 	private static final String AUTHORITY = "it.unibo.cs.jonus.waidrec.evaluationsprovider";
 	private static final String BASE_PATH = "evaluations";
+	private static final String TRAINING_PATH = "training_data";
 	public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY
 			+ "/" + BASE_PATH);
+	public static final Uri TRAINING_DATA_URI = Uri.parse("content://"
+			+ AUTHORITY + "/" + TRAINING_PATH);
 	public static final String PATH_LAST_EVALUATION = "/last";
 	public static final String PATH_ALL_EVALUATIONS = "/all";
 	public static final String PATH_ERASE_EVALUATIONS = "/erase";
+	public static final String PATH_INSERT_TRAINING_ITEM = "/insert";
+	public static final String PATH_ALL_TRAINING_DATA = "/all";
+	public static final String PATH_ERASE_TRAINING_DATA = "/erase";
+	public static final String PATH_DELETE_TRAINING_VEHICLE = "/delete_vehicle";
 	private static final int MAX_EVALUATIONS = 86400;
 
 	private static final UriMatcher sUriMatcher = new UriMatcher(
@@ -41,6 +49,15 @@ public class EvaluationsProvider extends ContentProvider {
 				ALL_EVALUATIONS);
 		sUriMatcher.addURI(AUTHORITY, BASE_PATH + PATH_ERASE_EVALUATIONS,
 				ERASE_EVALUATIONS);
+		sUriMatcher
+				.addURI(AUTHORITY, TRAINING_PATH + PATH_INSERT_TRAINING_ITEM,
+						INSERT_TRAINING_ITEM);
+		sUriMatcher.addURI(AUTHORITY, TRAINING_PATH + PATH_ALL_TRAINING_DATA,
+				ALL_TRAINING_DATA);
+		sUriMatcher.addURI(AUTHORITY, TRAINING_PATH + PATH_ERASE_TRAINING_DATA,
+				ERASE_TRAINING_DATA);
+		sUriMatcher.addURI(AUTHORITY, TRAINING_PATH
+				+ PATH_DELETE_TRAINING_VEHICLE, DELETE_TRAINING_VEHICLE);
 	}
 
 	public EvaluationsProvider() {
@@ -61,6 +78,12 @@ public class EvaluationsProvider extends ContentProvider {
 			count = db
 					.delete(DatabaseOpenHelper.TABLE_TRAINING_DATA, "1", null);
 			break;
+		case DELETE_TRAINING_VEHICLE:
+			count = db
+					.delete(DatabaseOpenHelper.TABLE_TRAINING_DATA,
+							DatabaseOpenHelper.COLUMN_CATEGORY + "=?",
+							selectionArgs);
+			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI: " + uri);
 		}
@@ -80,6 +103,7 @@ public class EvaluationsProvider extends ContentProvider {
 		int uriType = sUriMatcher.match(uri);
 		SQLiteDatabase db = database.getWritableDatabase();
 		long id = 0;
+		Uri newUri = null;
 		switch (uriType) {
 		case EVALUATIONS:
 			id = db.insert(DatabaseOpenHelper.TABLE_EVALUATIONS, null, values);
@@ -92,16 +116,20 @@ public class EvaluationsProvider extends ContentProvider {
 					+ table + " ORDER BY " + timestampColumn + " DESC LIMIT "
 					+ MAX_EVALUATIONS + ")";
 			db.delete(DatabaseOpenHelper.TABLE_EVALUATIONS, query, null);
+
+			newUri = Uri.parse(BASE_PATH + "/" + id);
 			break;
 		case INSERT_TRAINING_ITEM:
 			id = db.insert(DatabaseOpenHelper.TABLE_TRAINING_DATA, null, values);
+
+			newUri = Uri.parse(TRAINING_PATH + "/" + id);
 			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI: " + uri);
 		}
 		getContext().getContentResolver().notifyChange(uri, null);
 
-		return Uri.parse(BASE_PATH + "/" + id);
+		return newUri;
 	}
 
 	@Override

@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class DatabaseOpenHelper extends SQLiteOpenHelper {
 
-	private static final int DATABASE_VERSION = 5;
+	private static final int DATABASE_VERSION = 6;
 	public static final String DATABASE_NAME = "waid.db";
 	public static final String TABLE_EVALUATIONS = "evaluations";
 	public static final String TABLE_TRAINING_DATA = "training_data";
@@ -49,12 +49,12 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 
 	// training data table creation query
 	private static final String CREATE_TABLE_TRAINING_DATA = "CREATE TABLE IF NOT EXISTS "
-			+ TABLE_EVALUATIONS
+			+ TABLE_TRAINING_DATA
 			+ " ("
 			+ COLUMN_ID
 			+ " INTEGER PRIMARY KEY AUTOINCREMENT, "
 			+ COLUMN_TIMESTAMP
-			+ " INT NOT NULL, "
+			+ " INT, "
 			+ COLUMN_CATEGORY
 			+ " TEXT, "
 			+ COLUMN_AVGA
