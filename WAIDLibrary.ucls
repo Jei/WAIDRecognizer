@@ -3,7 +3,7 @@
   associations="true" dependencies="false" nesting-relationships="true">  
   <class id="1" language="java" name="it.unibo.cs.jonus.waidrec.VehicleManager" project="WAIDRecognizer" 
     file="/WAIDRecognizer/src/it/unibo/cs/jonus/waidrec/VehicleManager.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="408" y="214"/>    
+    <position height="-1" width="-1" x="515" y="154"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="false" static="true"/>      
@@ -12,7 +12,7 @@
   </class>  
   <interface id="2" language="java" name="it.unibo.cs.jonus.waidrec.VehicleObserver" project="WAIDRecognizer" 
     file="/WAIDRecognizer/src/it/unibo/cs/jonus/waidrec/VehicleObserver.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="107" y="65"/>    
+    <position height="-1" width="-1" x="515" y="377"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
@@ -21,7 +21,7 @@
   </interface>  
   <class id="3" language="java" name="it.unibo.cs.jonus.waidrec.VehicleInstance" project="WAIDRecognizer" 
     file="/WAIDRecognizer/src/it/unibo/cs/jonus/waidrec/VehicleInstance.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="400" y="658"/>    
+    <position height="-1" width="-1" x="1300" y="124"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="false" static="true"/>      
@@ -30,7 +30,7 @@
   </class>  
   <class id="4" language="java" name="it.unibo.cs.jonus.waidrec.MagnitudeListener" project="WAIDRecognizer" 
     file="/WAIDRecognizer/src/it/unibo/cs/jonus/waidrec/MagnitudeListener.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="720" y="157"/>    
+    <position height="-1" width="-1" x="516" y="606"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
@@ -39,7 +39,7 @@
   </class>  
   <class id="5" language="java" name="it.unibo.cs.jonus.waidrec.MagnitudeFeatures" project="WAIDRecognizer" 
     file="/WAIDRecognizer/src/it/unibo/cs/jonus/waidrec/MagnitudeFeatures.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="729" y="511"/>    
+    <position height="-1" width="-1" x="919" y="160"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="false" static="true"/>      
@@ -48,75 +48,125 @@
   </class>  
   <class id="6" language="java" name="it.unibo.cs.jonus.waidrec.ModelManager" project="WAIDRecognizer" 
     file="/WAIDRecognizer/src/it/unibo/cs/jonus/waidrec/ModelManager.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="118" y="393"/>    
+    <position height="-1" width="-1" x="123" y="164"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="false" static="true"/>      
       <operations public="true" package="true" protected="true" private="false" static="true"/>    
     </display>  
   </class>  
-  <association id="7">    
-    <bendpoint x="560" y="312"/>    
-    <bendpoint x="726" y="312"/>    
-    <end type="SOURCE" refId="1" navigable="false">      
-      <attribute id="8" name="gyroListener">        
-        <position height="16" width="69" x="541" y="191"/>      
+  <class id="7" language="java" name="it.unibo.cs.jonus.waidrec.VehicleTrainer" project="WAIDRecognizer" 
+    file="/WAIDRecognizer/src/it/unibo/cs/jonus/waidrec/VehicleTrainer.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="845" y="487"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
+      visibility="true">      
+      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
+      <operations public="true" package="true" protected="true" private="false" static="true"/>    
+    </display>  
+  </class>  
+  <class id="8" language="java" name="it.unibo.cs.jonus.waidrec.VehicleRecognizer" project="WAIDRecognizer" 
+    file="/WAIDRecognizer/src/it/unibo/cs/jonus/waidrec/VehicleRecognizer.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="183" y="484"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
+      visibility="true">      
+      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
+      <operations public="true" package="true" protected="true" private="false" static="true"/>    
+    </display>  
+  </class>  
+  <association id="9">    
+    <end type="SOURCE" refId="7" navigable="false">      
+      <attribute id="10" name="accelListener">        
+        <position height="16" width="73" x="624" y="522"/>      
       </attribute>      
-      <multiplicity id="9" minimum="0" maximum="1"/>    
+      <multiplicity id="11" minimum="0" maximum="1"/>    
     </end>    
     <end type="TARGET" refId="4" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
-  <association id="10">    
+  <association id="12">    
+    <bendpoint x="185" y="659"/>    
+    <end type="SOURCE" refId="8" navigable="false">      
+      <attribute id="13" name="gyroListener"/>      
+      <multiplicity id="14" minimum="0" maximum="1"/>    
+    </end>    
+    <end type="TARGET" refId="4" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <association id="15">    
+    <bendpoint x="1106" y="56"/>    
     <end type="SOURCE" refId="3" navigable="false">      
-      <attribute id="11" name="accelFeatures">        
-        <position height="16" width="77" x="531" y="599"/>      
+      <attribute id="16" name="gyroFeatures">        
+        <position height="16" width="73" x="1070" y="35"/>      
       </attribute>      
-      <multiplicity id="12" minimum="0" maximum="1"/>    
+      <multiplicity id="17" minimum="0" maximum="1"/>    
     </end>    
     <end type="TARGET" refId="5" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
-  <association id="13">    
-    <end type="SOURCE" refId="1" navigable="false">      
-      <attribute id="14" name="accelListener">        
-        <position height="16" width="73" x="542" y="131"/>      
-      </attribute>      
-      <multiplicity id="15" minimum="0" maximum="1"/>    
-    </end>    
-    <end type="TARGET" refId="4" navigable="true"/>    
-    <display labels="true" multiplicity="true"/>  
-  </association>  
-  <association id="16">    
-    <bendpoint x="407" y="394"/>    
-    <end type="SOURCE" refId="1" navigable="false">      
-      <attribute id="17" name="mModelManager"/>      
-      <multiplicity id="18" minimum="0" maximum="1"/>    
-    </end>    
-    <end type="TARGET" refId="6" navigable="true"/>    
-    <display labels="true" multiplicity="true"/>  
-  </association>  
-  <association id="19">    
-    <end type="SOURCE" refId="1" navigable="false">      
-      <attribute id="20" name="mObserver">        
-        <position height="16" width="62" x="184" y="133"/>      
-      </attribute>      
-      <multiplicity id="21" minimum="0" maximum="1">        
-        <position height="14" width="23" x="176" y="109"/>      
-      </multiplicity>    
+  <association id="18">    
+    <end type="SOURCE" refId="7" navigable="false">      
+      <attribute id="19" name="mObservers"/>      
+      <multiplicity id="20" minimum="0" maximum="2147483647"/>    
     </end>    
     <end type="TARGET" refId="2" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
-  <association id="22">    
-    <bendpoint x="401" y="513"/>    
+  <association id="21">    
+    <bendpoint x="1114" y="209"/>    
     <end type="SOURCE" refId="3" navigable="false">      
-      <attribute id="23" name="gyroFeatures">        
-        <position height="16" width="73" x="486" y="485"/>      
+      <attribute id="22" name="accelFeatures">        
+        <position height="16" width="77" x="1070" y="181"/>      
       </attribute>      
-      <multiplicity id="24" minimum="0" maximum="1"/>    
+      <multiplicity id="23" minimum="0" maximum="1">        
+        <position height="14" width="23" x="1035" y="200"/>      
+      </multiplicity>    
     </end>    
     <end type="TARGET" refId="5" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <generalization id="24">    
+    <end type="SOURCE" refId="8"/>    
+    <end type="TARGET" refId="1"/>  
+  </generalization>  
+  <association id="25">    
+    <end type="SOURCE" refId="8" navigable="false">      
+      <attribute id="26" name="accelListener">        
+        <position height="16" width="73" x="334" y="518"/>      
+      </attribute>      
+      <multiplicity id="27" minimum="0" maximum="1"/>    
+    </end>    
+    <end type="TARGET" refId="4" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <association id="28">    
+    <end type="SOURCE" refId="8" navigable="false">      
+      <attribute id="29" name="mObservers"/>      
+      <multiplicity id="30" minimum="0" maximum="2147483647"/>    
+    </end>    
+    <end type="TARGET" refId="2" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <association id="31">    
+    <bendpoint x="835" y="657"/>    
+    <end type="SOURCE" refId="7" navigable="false">      
+      <attribute id="32" name="gyroListener">        
+        <position height="16" width="69" x="722" y="622"/>      
+      </attribute>      
+      <multiplicity id="33" minimum="0" maximum="1"/>    
+    </end>    
+    <end type="TARGET" refId="4" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <generalization id="34">    
+    <end type="SOURCE" refId="7"/>    
+    <end type="TARGET" refId="1"/>  
+  </generalization>  
+  <association id="35">    
+    <end type="SOURCE" refId="1" navigable="false">      
+      <attribute id="36" name="mModelManager"/>      
+      <multiplicity id="37" minimum="0" maximum="1"/>    
+    </end>    
+    <end type="TARGET" refId="6" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
   <classifier-display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
