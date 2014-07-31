@@ -423,7 +423,7 @@ public class TrainingActivity extends Activity {
 			String[] arg = { vehicle };
 			Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
 					+ EvaluationsProvider.PATH_DELETE_TRAINING_VEHICLE);
-			int count = getContentResolver().delete(uri, null, arg);
+			getContentResolver().delete(uri, null, arg);
 			break;
 		}
 
@@ -579,12 +579,12 @@ public class TrainingActivity extends Activity {
 
 		try {
 			// Get assets
-			walkingAsset = assets.openFd("walking_1000lines.gif")
+			walkingAsset = assets.openFd("walking.gif")
 					.createInputStream();
-			carAsset = assets.openFd("car_1000lines.gif").createInputStream();
-			trainAsset = assets.openFd("train_1000lines.gif")
+			carAsset = assets.openFd("car.gif").createInputStream();
+			trainAsset = assets.openFd("train.gif")
 					.createInputStream();
-			idleAsset = assets.openFd("idle_1000lines.gif").createInputStream();
+			idleAsset = assets.openFd("idle.gif").createInputStream();
 			vehiclesAsset = assets.openFd("vehicles").createInputStream();
 
 			// Copy the arff files to app files directory

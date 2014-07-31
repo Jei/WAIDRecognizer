@@ -493,12 +493,12 @@ public class RecognizerActivity extends Activity {
 
 		try {
 			// Get assets
-			walkingAsset = assets.openFd("walking_1000lines.gif")
+			walkingAsset = assets.openFd("walking.gif")
 					.createInputStream();
-			carAsset = assets.openFd("car_1000lines.gif").createInputStream();
-			trainAsset = assets.openFd("train_1000lines.gif")
+			carAsset = assets.openFd("car.gif").createInputStream();
+			trainAsset = assets.openFd("train.gif")
 					.createInputStream();
-			idleAsset = assets.openFd("idle_1000lines.gif").createInputStream();
+			idleAsset = assets.openFd("idle.gif").createInputStream();
 			vehiclesAsset = assets.openFd("vehicles").createInputStream();
 
 			// Copy the arff files to app files directory
