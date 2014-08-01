@@ -16,19 +16,6 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
-        <activity
-            android:name="it.unibo.cs.jonus.waidrec.RecognizerActivity"
-            android:label="@string/app_name"
-            android:launchMode="singleTop"
-            android:screenOrientation="portrait"
-            android:windowSoftInputMode="stateHidden" >
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
         <service
             android:name="it.unibo.cs.jonus.waidrec.RecognizerService"
             android:label="@string/recognizer_service_name" >
@@ -41,54 +28,20 @@
             android:exported="true" >
         </provider>
 
-        <activity
-            android:name="it.unibo.cs.jonus.waidrec.Magnitude"
-            android:label="@string/title_activity_magnitude"
-            android:launchMode="singleTop" >
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="it.unibo.cs.jonus.waidrec.Recognizer" />
-        </activity>
-        <activity
-            android:name="it.unibo.cs.jonus.waidrec.TrainingActivity"
-            android:label="@string/app_name"
-            android:launchMode="singleTop"
-            android:screenOrientation="portrait"
-            android:windowSoftInputMode="stateHidden" >
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="it.unibo.cs.jonus.waidrec.RecognizerActivity" />
-        </activity>
-
         <service
             android:name="it.unibo.cs.jonus.waidrec.TrainingService"
             android:label="@string/recognizer_service_name" >
         </service>
 
         <activity
-            android:name="it.unibo.cs.jonus.waidrec.HistoryActivity"
-            android:label="@string/title_activity_history"
-            android:launchMode="singleTop"
-            android:parentActivityName="it.unibo.cs.jonus.waidrec.RecognizerActivity" >
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="it.unibo.cs.jonus.waidrec.RecognizerActivity" />
-        </activity>
-        <activity
-            android:name="it.unibo.cs.jonus.waidrec.RecognizerSettingsActivity"
-            android:label="@string/title_activity_recognizer_settings"
-            android:parentActivityName="it.unibo.cs.jonus.waidrec.RecognizerActivity" >
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="it.unibo.cs.jonus.waidrec.RecognizerActivity" />
-        </activity>
-        <activity
-            android:name="it.unibo.cs.jonus.waidrec.TrainingSettingsActivity"
-            android:label="@string/title_activity_training_settings"
-            android:parentActivityName="it.unibo.cs.jonus.waidrec.TrainingActivity" >
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="it.unibo.cs.jonus.waidrec.TrainingActivity" />
+            android:name="it.unibo.cs.jonus.waidrec.MainActivity"
+            android:label="@string/app_name"
+            android:screenOrientation="portrait" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
     </application>
 
