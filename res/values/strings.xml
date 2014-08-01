@@ -19,6 +19,7 @@
     <string name="model_generation_ioexception">Error while generating the new model. Could not read or write file.</string>
     <string name="model_generation_exception">Error while generating the new model. Classification error.</string>
     <string name="recognizer_started">Vehicle Recognizer started</string>
+    <string name="recognizer_stopped">Vehicle Recognizer stopped</string>
     <string name="error">Error</string>
     <string name="error_empty_field">History length or sampling rate missing!</string>
     <string name="error_isgenerating">The application is busy</string>
@@ -60,5 +61,6 @@
     <string name="title_activity_history">HistoryActivity</string>
     <string name="history">History</string>
     <string name="delete_history_file">Delete</string>
+    <string name="recognizer">Recognizer</string>
 
 </resources>
