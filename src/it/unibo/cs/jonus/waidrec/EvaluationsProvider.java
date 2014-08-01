@@ -18,6 +18,7 @@ public class EvaluationsProvider extends ContentProvider {
 	private static final int EVALUATIONS = 1;
 	private static final int LAST_EVALUATION = 2;
 	private static final int ALL_EVALUATIONS = 3;
+	private static final int SOME_EVALUATIONS = 4;
 	private static final int ERASE_EVALUATIONS = 666;
 	private static final int INSERT_TRAINING_ITEM = 11;
 	private static final int ALL_TRAINING_DATA = 13;
@@ -32,6 +33,7 @@ public class EvaluationsProvider extends ContentProvider {
 			+ AUTHORITY + "/" + TRAINING_PATH);
 	public static final String PATH_LAST_EVALUATION = "/last";
 	public static final String PATH_ALL_EVALUATIONS = "/all";
+	public static final String PATH_SOME_EVALUATIONS = "/some";
 	public static final String PATH_ERASE_EVALUATIONS = "/erase";
 	public static final String PATH_INSERT_TRAINING_ITEM = "/insert";
 	public static final String PATH_ALL_TRAINING_DATA = "/all";
@@ -47,6 +49,8 @@ public class EvaluationsProvider extends ContentProvider {
 				LAST_EVALUATION);
 		sUriMatcher.addURI(AUTHORITY, BASE_PATH + PATH_ALL_EVALUATIONS,
 				ALL_EVALUATIONS);
+		sUriMatcher.addURI(AUTHORITY, BASE_PATH + PATH_SOME_EVALUATIONS,
+				SOME_EVALUATIONS);
 		sUriMatcher.addURI(AUTHORITY, BASE_PATH + PATH_ERASE_EVALUATIONS,
 				ERASE_EVALUATIONS);
 		sUriMatcher
@@ -79,10 +83,8 @@ public class EvaluationsProvider extends ContentProvider {
 					.delete(DatabaseOpenHelper.TABLE_TRAINING_DATA, "1", null);
 			break;
 		case DELETE_TRAINING_VEHICLE:
-			count = db
-					.delete(DatabaseOpenHelper.TABLE_TRAINING_DATA,
-							DatabaseOpenHelper.COLUMN_CATEGORY + "=?",
-							selectionArgs);
+			count = db.delete(DatabaseOpenHelper.TABLE_TRAINING_DATA,
+					DatabaseOpenHelper.COLUMN_CATEGORY + "=?", selectionArgs);
 			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI: " + uri);
@@ -155,6 +157,11 @@ public class EvaluationsProvider extends ContentProvider {
 			// discard selection values, add sorting
 			selection = null;
 			sortOrder = "_id DESC";
+			queryBuilder.setTables(DatabaseOpenHelper.TABLE_EVALUATIONS);
+			break;
+		case SOME_EVALUATIONS:
+			// add sorting and limit
+			sortOrder = "_id DESC " + sortOrder;
 			queryBuilder.setTables(DatabaseOpenHelper.TABLE_EVALUATIONS);
 			break;
 		case LAST_EVALUATION:
