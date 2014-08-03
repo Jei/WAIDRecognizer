@@ -161,7 +161,11 @@ public class EvaluationsProvider extends ContentProvider {
 			break;
 		case SOME_EVALUATIONS:
 			// add sorting and limit
-			sortOrder = "_id DESC " + sortOrder;
+			if (sortOrder != null) {
+				sortOrder = "_id DESC " + sortOrder;
+			} else {
+				sortOrder = "_id DESC";
+			}
 			queryBuilder.setTables(DatabaseOpenHelper.TABLE_EVALUATIONS);
 			break;
 		case LAST_EVALUATION:
