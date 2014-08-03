@@ -12,6 +12,6 @@
         android:orderInCategory="200"
         android:showAsAction="always"
         android:title="@string/delete_history_file"
-        android:icon="@drawable/ic_action_discard_light"/>
+        android:icon="@drawable/ic_action_discard_dark"/>
 
 </menu>
