@@ -1,9 +1,6 @@
 package it.unibo.cs.jonus.waidrec;
 
-import android.os.Parcel;
-import android.os.Parcelable;
-
-public class MagnitudeFeatures implements Parcelable {
+public class MagnitudeFeatures {
 
 	private Double average;
 	private Double maximum;
@@ -15,13 +12,6 @@ public class MagnitudeFeatures implements Parcelable {
 		this.maximum = (double) 0;
 		this.minimum = (double) 0;
 		this.standardDeviation = (double) 0;
-	}
-	
-	public MagnitudeFeatures(Parcel in) {
-		this.average = in.readDouble();
-		this.maximum = in.readDouble();
-		this.minimum = in.readDouble();
-		this.standardDeviation = in.readDouble();
 	}
 
 	/**
@@ -83,32 +73,5 @@ public class MagnitudeFeatures implements Parcelable {
 	public void setStandardDeviation(Double standardDeviation) {
 		this.standardDeviation = standardDeviation;
 	}
-
-	@Override
-	public int describeContents() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	@Override
-	public void writeToParcel(Parcel dest, int flags) {
-		dest.writeDouble(average);
-		dest.writeDouble(maximum);
-		dest.writeDouble(minimum);
-		dest.writeDouble(standardDeviation);
-	}
-
-	public static final Parcelable.Creator<MagnitudeFeatures> CREATOR = new Parcelable.Creator<MagnitudeFeatures>() {
-
-		@Override
-		public MagnitudeFeatures createFromParcel(Parcel source) {
-			return new MagnitudeFeatures(source);
-		}
-
-		@Override
-		public MagnitudeFeatures[] newArray(int size) {
-			return new MagnitudeFeatures[size];
-		}
-	};
 
 }
