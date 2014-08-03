@@ -1,0 +1,69 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context=".TrainingActivity" >
+
+    <ImageView
+        android:id="@+id/trainingOnView"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"
+        android:contentDescription="@string/temp_description"
+        android:maxHeight="50dp"
+        android:maxWidth="175dp"
+        android:minHeight="50dp"
+        android:minWidth="175dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/onoff_005050"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/trainingOffView"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"
+        android:contentDescription="@string/temp_description"
+        android:maxHeight="50dp"
+        android:maxWidth="175dp"
+        android:minHeight="50dp"
+        android:minWidth="175dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/onoff_00b0b0"
+        android:visibility="invisible" />
+
+    <Spinner
+        android:id="@+id/classesSpinner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true" />
+
+    <RadioGroup
+        android:id="@+id/modeRadioGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/classesSpinner"
+        android:layout_centerHorizontal="true" >
+
+        <RadioButton
+            android:id="@+id/overwriteRadioButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/mode_overwrite" />
+
+        <RadioButton
+            android:id="@+id/appendRadioButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/mode_append" />
+    </RadioGroup>
+
+</RelativeLayout>

@@ -29,6 +29,9 @@ import android.widget.ListView;
  * 
  */
 public class RecognizerFragment extends Fragment {
+	
+	private static final String KEY_RECOGNIZER_ISRUNNING = "recognizer_isrunning";
+	private static final String KEY_TRAINING_ISRUNNING = "training_isrunning";
 
 	private MainActivity mActivity;
 
@@ -108,7 +111,7 @@ public class RecognizerFragment extends Fragment {
 
 		// Set on/off image visible
 		onoffView.setVisibility(View.VISIBLE);
-		
+
 		// Set click listeners
 		onoffView.setOnClickListener(startRecListener);
 		noneView.setOnClickListener(stopRecListener);
@@ -116,7 +119,7 @@ public class RecognizerFragment extends Fragment {
 		carView.setOnClickListener(stopRecListener);
 		trainView.setOnClickListener(stopRecListener);
 		idleView.setOnClickListener(stopRecListener);
-		
+
 		mCurrentVehicle = "";
 
 		// Prepare history view
@@ -147,26 +150,34 @@ public class RecognizerFragment extends Fragment {
 
 	// Button handler for "Start Provider"
 	private void startProvider(View view) {
-		// Clear long term history
-		evaluationsList.clear();
-		@SuppressWarnings("unchecked")
-		ArrayAdapter<VehicleInstance> adapter = (ArrayAdapter<VehicleInstance>) historyView
-				.getAdapter();
-		adapter.notifyDataSetChanged();
+		boolean isTrainingRunning = mSharedPrefs.getBoolean(
+				KEY_TRAINING_ISRUNNING, false);
+		boolean isRecognizerRunning = mSharedPrefs.getBoolean(
+				KEY_RECOGNIZER_ISRUNNING, false);
 
-		// Use startService to keep it running independently
-		Intent intent = new Intent(mActivity, RecognizerService.class);
-		mActivity.startService(intent);
+		// Check if TrainingService is running
+		if (!isTrainingRunning && !isRecognizerRunning) {
+			// Clear long term history
+			evaluationsList.clear();
+			@SuppressWarnings("unchecked")
+			ArrayAdapter<VehicleInstance> adapter = (ArrayAdapter<VehicleInstance>) historyView
+					.getAdapter();
+			adapter.notifyDataSetChanged();
 
-		// Start listening for changes to the provider
-		registerContentObserver();
+			// Use startService to keep it running independently
+			Intent intent = new Intent(mActivity, RecognizerService.class);
+			mActivity.startService(intent);
 
-		// Hide the on/off image
-		onoffView.setVisibility(View.INVISIBLE);
+			// Start listening for changes to the provider
+			registerContentObserver();
 
-		// Show persistent notification
-		mActivity.showNotification(
-				MainActivity.NOTIFICATION_RECOGNIZER_STARTED, false, true);
+			// Hide the on/off image
+			onoffView.setVisibility(View.INVISIBLE);
+
+			// Show persistent notification
+			mActivity.showNotification(
+					MainActivity.NOTIFICATION_RECOGNIZER_STARTED, false, true);
+		}
 	}
 
 	// Button handler for "Stop Provider"
