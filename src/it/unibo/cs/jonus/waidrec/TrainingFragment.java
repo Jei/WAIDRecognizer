@@ -41,6 +41,7 @@ public class TrainingFragment extends Fragment {
 	private static final String KEY_TRAINING_CURRENT_VEHICLE = "training_current_vehicle";
 	private static final String KEY_TRAINING_CURRENT_APPEND = "training_current_append";
 	private static final String KEY_RECOGNIZER_ISRUNNING = "recognizer_isrunning";
+	private static final String KEY_TRN_START_DELAY = "pref_training_start_delay";
 
 	private MainActivity mActivity;
 
@@ -189,8 +190,7 @@ public class TrainingFragment extends Fragment {
 	}
 
 	private void trainingDelayedStart() {
-		String st = mSharedPrefs.getString(
-				TrainingSettingsActivity.KEY_TRN_START_DELAY, "10");
+		String st = mSharedPrefs.getString(KEY_TRN_START_DELAY, "10");
 		long startingTime = Integer.parseInt(st) * 1000;
 
 		final ProgressDialog countdownDialog = new ProgressDialog(mActivity);

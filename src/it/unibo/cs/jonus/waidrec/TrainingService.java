@@ -17,6 +17,8 @@ import android.preference.PreferenceManager;
 
 public class TrainingService extends Service {
 
+	private static final String KEY_TRN_SAMPLING_DELAY = "pref_training_sampling_delay";
+
 	private SharedPreferences sharedPrefs;
 
 	private final IBinder mBinder = new MyBinder();
@@ -97,8 +99,7 @@ public class TrainingService extends Service {
 		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 		String vehicle = sharedPrefs.getString("training_current_vehicle",
 				"idle");
-		String sd = sharedPrefs.getString(
-				TrainingSettingsActivity.KEY_TRN_SAMPLING_DELAY, "5");
+		String sd = sharedPrefs.getString(KEY_TRN_SAMPLING_DELAY, "5");
 		int samplingDelay = Integer.parseInt(sd);
 
 		modelManager = new ModelManager(this);

@@ -30,6 +30,8 @@ public class RecognizerService extends Service {
 	TimerTask testEvaluationTask;
 	Timer testEvaluationTimer;
 
+	private static final String KEY_REC_SAMPLING_DELAY = "pref_rec_sampling_delay";
+
 	private final IBinder mBinder = new MyBinder();
 
 	private PowerManager powerManager;
@@ -77,13 +79,13 @@ public class RecognizerService extends Service {
 		sharedPrefs.edit().putBoolean("recognizer_isrunning", true).commit();
 
 		// Get the sampling delay from shared preferences
-		String sdString = sharedPrefs.getString(
-				RecognizerSettingsActivity.KEY_REC_SAMPLING_DELAY, "5");
+		String sdString = sharedPrefs.getString(KEY_REC_SAMPLING_DELAY, "5");
 		int samplingDelay = Integer.parseInt(sdString);
 
 		// Get the model and vehicle managers
 		mModelManager = new ModelManager(getApplicationContext());
-		mVehicleManager = new VehicleRecognizer(this, mModelManager, samplingDelay * 1000);
+		mVehicleManager = new VehicleRecognizer(this, mModelManager,
+				samplingDelay * 1000);
 
 		// Get power manager and partial wake lock
 		powerManager = (PowerManager) getSystemService(POWER_SERVICE);
