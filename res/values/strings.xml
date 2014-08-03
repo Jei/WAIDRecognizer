@@ -62,5 +62,6 @@
     <string name="history">History</string>
     <string name="delete_history_file">Delete</string>
     <string name="recognizer">Recognizer</string>
+    <string name="preferences">Preferences</string>
 
 </resources>

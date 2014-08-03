@@ -43,6 +43,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name="it.unibo.cs.jonus.waidrec.MainPrefsActivity"
+            android:label="@string/preferences"
+            android:screenOrientation="portrait" >
+        </activity>
     </application>
 
 </manifest>

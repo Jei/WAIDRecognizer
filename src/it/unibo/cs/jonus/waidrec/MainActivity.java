@@ -34,12 +34,8 @@ import android.support.v4.app.NavUtils;
 import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends FragmentActivity implements
@@ -63,6 +59,11 @@ public class MainActivity extends FragmentActivity implements
 	private SharedPreferences mSharedPrefs;
 	private NotificationManager mNotificationManager;
 
+	private static final int ERROR_MODEL_GENERATION_IOEXCEPTION = 10;
+	private static final int ERROR_MODEL_GENERATION_EXCEPTION = 11;
+	public static final int NOTIFICATION_MODEL_GENERATION_IOEXCEPTION = R.string.model_generation_ioexception;
+	public static final int NOTIFICATION_MODEL_GENERATION_EXCEPTION = R.string.model_generation_exception;
+	public static final int NOTIFICATION_TRAINING_RUNNING = R.string.training_service_running;
 	public static final int NOTIFICATION_GENERATING_MODEL = R.string.model_generating;
 	public static final int NOTIFICATION_MODEL_GENERATED = R.string.model_generated;
 	public static final int NOTIFICATION_MODEL_GENERATION_ERROR = R.string.model_generation_error;
@@ -95,27 +96,40 @@ public class MainActivity extends FragmentActivity implements
 				dialog.dismiss();
 			}
 
-			if (code == 0) {
+			switch (code) {
+			case 0:
 				Toast.makeText(activity, R.string.model_generated,
 						Toast.LENGTH_SHORT).show();
 				activity.hideNotification(NOTIFICATION_GENERATING_MODEL);
 				activity.showNotification(NOTIFICATION_MODEL_GENERATED, true,
 						false);
-
-			} else {
+				break;
+			case ERROR_MODEL_GENERATION_IOEXCEPTION:
 				new AlertDialog.Builder(activity)
 						.setTitle(activity.getText(R.string.error))
 						.setMessage(
-								activity.getText(NOTIFICATION_MODEL_GENERATION_ERROR))
+								activity.getText(NOTIFICATION_MODEL_GENERATION_IOEXCEPTION))
 						.show();
 				activity.hideNotification(NOTIFICATION_GENERATING_MODEL);
-				activity.showNotification(NOTIFICATION_MODEL_GENERATION_ERROR,
-						true, false);
+				activity.showNotification(
+						NOTIFICATION_MODEL_GENERATION_IOEXCEPTION, true, false);
 
+				break;
+			case ERROR_MODEL_GENERATION_EXCEPTION:
+				new AlertDialog.Builder(activity)
+						.setTitle(activity.getText(R.string.error))
+						.setMessage(
+								activity.getText(NOTIFICATION_MODEL_GENERATION_EXCEPTION))
+						.show();
+				activity.hideNotification(NOTIFICATION_GENERATING_MODEL);
+				activity.showNotification(
+						NOTIFICATION_MODEL_GENERATION_EXCEPTION, true, false);
+
+				break;
 			}
 		}
 	};
-	
+
 	private ThreadHandler mThreadHandler = new ThreadHandler(this);
 
 	// Runnable for model reset thread
@@ -154,10 +168,10 @@ public class MainActivity extends FragmentActivity implements
 				// Operations completed correctly, return 0
 				message.arg1 = 0;
 			} catch (IOException e) {
-				message.arg1 = 1;
+				message.arg1 = ERROR_MODEL_GENERATION_IOEXCEPTION;
 				e.printStackTrace();
 			} catch (Exception e) {
-				message.arg1 = 1;
+				message.arg1 = ERROR_MODEL_GENERATION_EXCEPTION;
 				e.printStackTrace();
 			}
 			if (!Thread.interrupted() && activity.mThreadHandler != null) {
@@ -165,6 +179,51 @@ public class MainActivity extends FragmentActivity implements
 				message.obj = mDialog;
 				activity.mThreadHandler.sendMessage(message);
 			}
+		}
+	};
+
+	public static class ModelGenRunnable implements Runnable {
+		private final WeakReference<MainActivity> mActivity;
+		ProgressDialog dialog;
+
+		public ModelGenRunnable(MainActivity context, ProgressDialog pd) {
+			mActivity = new WeakReference<MainActivity>((MainActivity) context);
+			dialog = pd;
+		}
+
+		public void run() {
+			MainActivity activity = mActivity.get();
+
+			// Prepare message for thread completion
+			Message message = new Message();
+			// Generate new model
+			try {
+				ModelManager modelManager = new ModelManager(activity);
+
+				// Get the VehicleInstances from the Content Provider
+				Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+						+ EvaluationsProvider.PATH_ALL_TRAINING_DATA);
+				Cursor cursor = activity.getContentResolver().query(uri,
+						allColumnsProjection, null, null, null);
+				ArrayList<VehicleInstance> instances = EvaluationsProvider
+						.cursorToVehicleInstanceArray(cursor);
+				modelManager.generateModel(instances);
+				Log.v("resetModel", "model generated");
+				// Operations completed correctly, return 0
+				message.arg1 = 0;
+			} catch (IOException e) {
+				message.arg1 = ERROR_MODEL_GENERATION_IOEXCEPTION;
+				e.printStackTrace();
+			} catch (Exception e) {
+				message.arg1 = ERROR_MODEL_GENERATION_EXCEPTION;
+				e.printStackTrace();
+			}
+			if (!Thread.interrupted() && activity.mThreadHandler != null) {
+				// Notify thread completion
+				message.obj = dialog;
+				activity.mThreadHandler.sendMessage(message);
+			}
+
 		}
 	};
 
@@ -228,7 +287,8 @@ public class MainActivity extends FragmentActivity implements
 			progressDialog.show();
 
 			// Run model reset thread
-			ModelResetRunnable runnable = new ModelResetRunnable(this, progressDialog);
+			ModelResetRunnable runnable = new ModelResetRunnable(this,
+					progressDialog);
 			Thread asyncThread = new Thread(null, runnable, "ModelReset",
 					204800);
 			asyncThread.start();
@@ -240,6 +300,22 @@ public class MainActivity extends FragmentActivity implements
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
+		return true;
+	}
+
+	// Start activities if selected from the menu
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case R.id.action_settings:
+			Intent prefsActivity = new Intent(this,
+					MainPrefsActivity.class);
+			startActivity(prefsActivity);
+			break;
+		default:
+			return false;
+		}
+
 		return true;
 	}
 
@@ -281,12 +357,11 @@ public class MainActivity extends FragmentActivity implements
 			case 0:
 				fragment = new RecognizerFragment();
 				break;
+			case 1:
+				fragment = new TrainingFragment();
+				break;
 			default:
-				fragment = new DummySectionFragment();
-				Bundle args = new Bundle();
-				args.putInt(DummySectionFragment.ARG_SECTION_NUMBER,
-						position + 1);
-				fragment.setArguments(args);
+				fragment = new HistoryFragment();
 				break;
 			}
 
@@ -313,33 +388,8 @@ public class MainActivity extends FragmentActivity implements
 			return null;
 		}
 	}
-
-	/**
-	 * A dummy fragment representing a section of the app, but that simply
-	 * displays dummy text.
-	 */
-	public static class DummySectionFragment extends Fragment {
-		/**
-		 * The fragment argument representing the section number for this
-		 * fragment.
-		 */
-		public static final String ARG_SECTION_NUMBER = "section_number";
-
-		public DummySectionFragment() {
-		}
-
-		@Override
-		public View onCreateView(LayoutInflater inflater, ViewGroup container,
-				Bundle savedInstanceState) {
-			View rootView = inflater.inflate(R.layout.fragment_main_dummy,
-					container, false);
-			TextView dummyTextView = (TextView) rootView
-					.findViewById(R.id.section_label);
-			dummyTextView.setText(Integer.toString(getArguments().getInt(
-					ARG_SECTION_NUMBER)));
-			return rootView;
-		}
-	}
+	
+	// TODO create method for model generation
 
 	private void resetFromAssets() {
 		AssetManager assets = getAssets();
