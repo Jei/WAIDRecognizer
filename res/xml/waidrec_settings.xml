@@ -3,10 +3,6 @@
         <Preference 
             android:defaultValue="true" 
             android:key="first_run"/>
-        <ListPreference 
-            android:entryValues="@array/default_classes_names" 
-            android:persistent="true" 
-            android:entries="@array/default_classes_keys"/>
         <Preference 
             android:defaultValue="false"
             android:key="recognizer_isrunning"/>
