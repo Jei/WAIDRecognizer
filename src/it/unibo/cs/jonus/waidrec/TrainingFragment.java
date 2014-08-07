@@ -5,15 +5,14 @@ package it.unibo.cs.jonus.waidrec;
 
 import it.unibo.cs.jonus.waidrec.MainActivity.ModelGenRunnable;
 
-import java.util.Arrays;
-import java.util.List;
-
+import java.util.ArrayList;
 import android.support.v4.app.Fragment;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -46,6 +45,8 @@ public class TrainingFragment extends Fragment {
 	private MainActivity mActivity;
 
 	private SharedPreferences mSharedPrefs;
+
+	private ArrayList<String> mVehicles = new ArrayList<String>();
 
 	private ImageView onView;
 	private ImageView offView;
@@ -98,9 +99,19 @@ public class TrainingFragment extends Fragment {
 				.findViewById(R.id.overwriteRadioButton);
 		appendRadio = (RadioButton) view.findViewById(R.id.appendRadioButton);
 
-		ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
-				mActivity, R.array.default_classes_names,
-				android.R.layout.simple_spinner_item);
+		// Get the list of VehicleItem from the db
+		Uri uri = Uri.parse(EvaluationsProvider.VEHICLES_URI
+				+ EvaluationsProvider.PATH_ALL_VEHICLES);
+		Cursor cursor = getActivity().getContentResolver().query(uri,
+				MainActivity.vehicleColumnsProjection, null, null, null);
+		ArrayList<VehicleItem> items = EvaluationsProvider
+				.cursorToVehicleItemArray(cursor);
+		mVehicles = new ArrayList<String>();
+		for (VehicleItem i : items) {
+			mVehicles.add(i.getCategory());
+		}
+		ArrayAdapter<String> adapter = new ArrayAdapter<String>(mActivity,
+				android.R.layout.simple_spinner_item, mVehicles);
 		// Specify the layout to use when the list of choices appears
 		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		// Apply the adapter to the spinner
@@ -136,10 +147,8 @@ public class TrainingFragment extends Fragment {
 		} else {
 			setUIMode(MODE_AVAILABLE);
 		}
-		List<String> vehiclesArray = Arrays.asList(getResources()
-				.getStringArray(R.array.default_classes_keys));
-		vehicleSpinner.setSelection(vehiclesArray.indexOf(mSharedPrefs
-				.getString(KEY_TRAINING_CURRENT_VEHICLE, "idle")));
+		vehicleSpinner.setSelection(mVehicles.indexOf(mSharedPrefs.getString(
+				KEY_TRAINING_CURRENT_VEHICLE, "idle")));
 		if (mSharedPrefs.getBoolean(KEY_TRAINING_CURRENT_APPEND, false)) {
 			writeModeGroup.check(R.id.appendRadioButton);
 		} else {
@@ -222,9 +231,8 @@ public class TrainingFragment extends Fragment {
 
 	private void trainingStart() {
 		// Get the selected vehicle
-		String vehicle = getResources().getStringArray(
-				R.array.default_classes_keys)[vehicleSpinner
-				.getSelectedItemPosition()];
+		String vehicle = mVehicles
+				.get(vehicleSpinner.getSelectedItemPosition());
 		mSharedPrefs.edit().putString(KEY_TRAINING_CURRENT_VEHICLE, vehicle)
 				.commit();
 		// Get the write mode
