@@ -24,6 +24,17 @@ import android.widget.Toast;
 
 public class RecognizerService extends Service {
 
+	private Thread.UncaughtExceptionHandler androidDefaultUEH;
+
+	private Thread.UncaughtExceptionHandler ueHandler = new Thread.UncaughtExceptionHandler() {
+		public void uncaughtException(Thread thread, Throwable ex) {
+			sharedPrefs.edit().putBoolean("recognizer_isrunning", false)
+					.commit();
+
+			androidDefaultUEH.uncaughtException(thread, ex);
+		}
+	};
+
 	private SharedPreferences sharedPrefs;
 
 	// Evaluation insertion test objects
@@ -72,6 +83,10 @@ public class RecognizerService extends Service {
 
 	@Override
 	public void onCreate() {
+		// Set default UE handler
+		androidDefaultUEH = Thread.getDefaultUncaughtExceptionHandler();
+		Thread.setDefaultUncaughtExceptionHandler(ueHandler);
+
 		// Get shared preferences
 		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 
