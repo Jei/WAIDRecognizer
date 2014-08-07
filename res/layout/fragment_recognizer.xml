@@ -9,7 +9,7 @@
     tools:context=".RecognizerActivity" >
 
     <ImageView
-        android:id="@+id/walkingView"
+        android:id="@+id/vehicleView"
         android:layout_width="150dp"
         android:layout_height="150dp"
         android:layout_centerHorizontal="true"
@@ -20,67 +20,6 @@
         android:minHeight="50dp"
         android:minWidth="175dp"
         android:scaleType="centerInside"
-        android:src="@drawable/walking_00b0b0"
-        android:visibility="invisible" />
-
-    <ImageView
-        android:id="@+id/carView"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="20dp"
-        android:contentDescription="@string/temp_description"
-        android:maxHeight="50dp"
-        android:maxWidth="175dp"
-        android:minHeight="50dp"
-        android:minWidth="175dp"
-        android:scaleType="centerInside"
-        android:src="@drawable/car_00b0b0"
-        android:visibility="invisible" />
-
-    <ImageView
-        android:id="@+id/trainView"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="20dp"
-        android:contentDescription="@string/temp_description"
-        android:maxHeight="50dp"
-        android:maxWidth="175dp"
-        android:minHeight="50dp"
-        android:minWidth="175dp"
-        android:scaleType="centerInside"
-        android:src="@drawable/train_00b0b0"
-        android:visibility="invisible" />
-
-    <ImageView
-        android:id="@+id/idleView"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="20dp"
-        android:contentDescription="@string/temp_description"
-        android:maxHeight="50dp"
-        android:maxWidth="175dp"
-        android:minHeight="50dp"
-        android:minWidth="175dp"
-        android:scaleType="centerInside"
-        android:src="@drawable/idle_00b0b0"
-        android:visibility="invisible" />
-
-    <ImageView
-        android:id="@+id/noneView"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="20dp"
-        android:contentDescription="@string/temp_description"
-        android:maxHeight="50dp"
-        android:maxWidth="175dp"
-        android:minHeight="50dp"
-        android:minWidth="175dp"
-        android:scaleType="centerInside"
-        android:src="@drawable/none_00b0b0"
         android:visibility="invisible" />
 
     <ImageView
@@ -102,7 +41,7 @@
         android:id="@+id/historyView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/noneView"
+        android:layout_below="@id/onoffView"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="20dp"
         android:background="@color/black"
@@ -115,7 +54,7 @@
         android:id="@+id/emptyView"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/noneView"
+        android:layout_below="@id/onoffView"
         android:layout_marginTop="20dp"
         android:paddingLeft="10dp"
         android:visibility="gone" >

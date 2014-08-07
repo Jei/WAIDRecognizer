@@ -4,6 +4,7 @@
 package it.unibo.cs.jonus.waidrec;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import android.support.v4.app.Fragment;
 import android.content.ContentResolver;
@@ -12,10 +13,13 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.ContentObserver;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -29,7 +33,7 @@ import android.widget.ListView;
  * 
  */
 public class RecognizerFragment extends Fragment {
-	
+
 	private static final String KEY_RECOGNIZER_ISRUNNING = "recognizer_isrunning";
 	private static final String KEY_TRAINING_ISRUNNING = "training_isrunning";
 
@@ -41,12 +45,9 @@ public class RecognizerFragment extends Fragment {
 	private ListView historyView;
 	private ArrayList<VehicleInstance> evaluationsList;
 
-	private ImageView noneView;
-	private ImageView walkingView;
-	private ImageView carView;
-	private ImageView trainView;
-	private ImageView idleView;
+	private ImageView vehicleView;
 	private ImageView onoffView;
+	private HashMap<String, Bitmap> mVehicles = new HashMap<String, Bitmap>();
 
 	private String mCurrentVehicle;
 
@@ -102,23 +103,30 @@ public class RecognizerFragment extends Fragment {
 		mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(mActivity);
 
 		// Set classifications images
-		noneView = (ImageView) view.findViewById(R.id.noneView);
-		walkingView = (ImageView) view.findViewById(R.id.walkingView);
-		carView = (ImageView) view.findViewById(R.id.carView);
-		trainView = (ImageView) view.findViewById(R.id.trainView);
-		idleView = (ImageView) view.findViewById(R.id.idleView);
+		vehicleView = (ImageView) view.findViewById(R.id.vehicleView);
 		onoffView = (ImageView) view.findViewById(R.id.onoffView);
+
+		// Get vehicles and icons from the db
+		Uri uri = Uri.parse(EvaluationsProvider.VEHICLES_URI
+				+ EvaluationsProvider.PATH_ALL_VEHICLES);
+		Cursor cursor = getActivity().getContentResolver().query(uri,
+				MainActivity.vehicleColumnsProjection, null, null, null);
+		ArrayList<VehicleItem> items = EvaluationsProvider
+				.cursorToVehicleItemArray(cursor);
+		for (VehicleItem i : items) {
+			mVehicles.put(i.getCategory(), i.getIcon());
+		}
+		// Get "none" bitmap and add it
+		Bitmap noneBmp = BitmapFactory.decodeResource(getResources(),
+				R.drawable.none_00b0b0);
+		mVehicles.put("none", noneBmp);
 
 		// Set on/off image visible
 		onoffView.setVisibility(View.VISIBLE);
 
 		// Set click listeners
 		onoffView.setOnClickListener(startRecListener);
-		noneView.setOnClickListener(stopRecListener);
-		walkingView.setOnClickListener(stopRecListener);
-		carView.setOnClickListener(stopRecListener);
-		trainView.setOnClickListener(stopRecListener);
-		idleView.setOnClickListener(stopRecListener);
+		vehicleView.setOnClickListener(stopRecListener);
 
 		mCurrentVehicle = "";
 
@@ -136,7 +144,7 @@ public class RecognizerFragment extends Fragment {
 		super.onResume();
 
 		// Check if RecognizerService is already running
-		if (mSharedPrefs.getBoolean("recognizer_isrunning", false)) {
+		if (mSharedPrefs.getBoolean(KEY_RECOGNIZER_ISRUNNING, false)) {
 			startProvider(onoffView);
 		}
 	}
@@ -152,11 +160,9 @@ public class RecognizerFragment extends Fragment {
 	private void startProvider(View view) {
 		boolean isTrainingRunning = mSharedPrefs.getBoolean(
 				KEY_TRAINING_ISRUNNING, false);
-		boolean isRecognizerRunning = mSharedPrefs.getBoolean(
-				KEY_RECOGNIZER_ISRUNNING, false);
 
 		// Check if TrainingService is running
-		if (!isTrainingRunning && !isRecognizerRunning) {
+		if (!isTrainingRunning) {
 			// Clear long term history
 			evaluationsList.clear();
 			@SuppressWarnings("unchecked")
@@ -173,6 +179,8 @@ public class RecognizerFragment extends Fragment {
 
 			// Hide the on/off image
 			onoffView.setVisibility(View.INVISIBLE);
+			vehicleView.setVisibility(View.VISIBLE);
+			vehicleView.setImageBitmap(null);
 
 			// Show persistent notification
 			mActivity.showNotification(
@@ -190,11 +198,7 @@ public class RecognizerFragment extends Fragment {
 
 		// View neutral classification
 		onoffView.setVisibility(View.VISIBLE);
-		noneView.setVisibility(View.INVISIBLE);
-		walkingView.setVisibility(View.INVISIBLE);
-		carView.setVisibility(View.INVISIBLE);
-		trainView.setVisibility(View.INVISIBLE);
-		idleView.setVisibility(View.INVISIBLE);
+		vehicleView.setVisibility(View.INVISIBLE);
 		mCurrentVehicle = "";
 
 		// Hide persistent notification
@@ -247,37 +251,10 @@ public class RecognizerFragment extends Fragment {
 		if (!newVehicle.equals(mCurrentVehicle)) {
 			mCurrentVehicle = newVehicle;
 
-			// switch not working with JRE under 1.7
-			if (newVehicle.equals("car")) {
-				carView.setVisibility(View.VISIBLE);
-				noneView.setVisibility(View.INVISIBLE);
-				walkingView.setVisibility(View.INVISIBLE);
-				trainView.setVisibility(View.INVISIBLE);
-				idleView.setVisibility(View.INVISIBLE);
-			} else if (newVehicle.equals("walking")) {
-				walkingView.setVisibility(View.VISIBLE);
-				noneView.setVisibility(View.INVISIBLE);
-				carView.setVisibility(View.INVISIBLE);
-				trainView.setVisibility(View.INVISIBLE);
-				idleView.setVisibility(View.INVISIBLE);
-			} else if (newVehicle.equals("train")) {
-				trainView.setVisibility(View.VISIBLE);
-				noneView.setVisibility(View.INVISIBLE);
-				carView.setVisibility(View.INVISIBLE);
-				walkingView.setVisibility(View.INVISIBLE);
-				idleView.setVisibility(View.INVISIBLE);
-			} else if (newVehicle.equals("idle")) {
-				trainView.setVisibility(View.INVISIBLE);
-				noneView.setVisibility(View.INVISIBLE);
-				carView.setVisibility(View.INVISIBLE);
-				walkingView.setVisibility(View.INVISIBLE);
-				idleView.setVisibility(View.VISIBLE);
+			if (mVehicles.containsKey(newVehicle)) {
+				vehicleView.setImageBitmap(mVehicles.get(newVehicle));
 			} else {
-				trainView.setVisibility(View.INVISIBLE);
-				noneView.setVisibility(View.VISIBLE);
-				carView.setVisibility(View.INVISIBLE);
-				walkingView.setVisibility(View.INVISIBLE);
-				idleView.setVisibility(View.INVISIBLE);
+				vehicleView.setImageBitmap(mVehicles.get("none"));
 			}
 		}
 
