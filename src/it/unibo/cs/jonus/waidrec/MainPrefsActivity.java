@@ -1,11 +1,9 @@
 package it.unibo.cs.jonus.waidrec;
 
-import it.unibo.cs.jonus.waidrec.MainActivity.ModelResetRunnable;
-
 import java.util.List;
 
 import android.annotation.TargetApi;
-import android.app.ProgressDialog;
+import android.app.NotificationManager;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Build;
@@ -19,6 +17,8 @@ import android.support.v4.app.NavUtils;
 
 public class MainPrefsActivity extends PreferenceActivity {
 
+	public static final int RESULT_NO_OP = 0;
+	public static final int RESULT_RESET = 1;
 	public static final String KEY_REC_SAMPLING_DELAY = "pref_rec_sampling_delay";
 	private static final int MAX_SAMPLING_DELAY = 60;
 	private static final int MIN_SAMPLING_DELAY = 1;
@@ -27,10 +27,16 @@ public class MainPrefsActivity extends PreferenceActivity {
 	private static final int MAX_START_DELAY = 60;
 	private static final int MIN_START_DELAY = 0;
 
+	NotificationManager mNotificationManager;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+		mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+		
+		// Set the result of this activity
+		setResult(RESULT_NO_OP);
 	}
 
 	@Override
@@ -65,23 +71,9 @@ public class MainPrefsActivity extends PreferenceActivity {
 
 		if (header.id == R.id.reset_default_model) {
 			// TODO add confirmation dialog
-			// Create progress dialog
-			final ProgressDialog progressDialog = new ProgressDialog(this);
-			progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-			progressDialog.setMessage("Generating new model...");
-			progressDialog.setIndeterminate(true);
-			progressDialog.setCancelable(false);
-			progressDialog.show();
-
-			// Run model reset thread
-			MainActivity activity = (MainActivity) getApplicationContext();
-			ModelResetRunnable runnable = new ModelResetRunnable(activity,
-					progressDialog);
-			Thread asyncThread = new Thread(null, runnable, "ModelReset",
-					204800);
-			asyncThread.start();
-			activity.showNotification(
-					MainActivity.NOTIFICATION_GENERATING_MODEL, false, true);
+			// Return to the parent activity with reset code
+			setResult(RESULT_RESET);
+			finish();
 		}
 	}
 
