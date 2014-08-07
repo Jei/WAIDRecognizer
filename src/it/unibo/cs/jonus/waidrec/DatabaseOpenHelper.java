@@ -6,10 +6,11 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class DatabaseOpenHelper extends SQLiteOpenHelper {
 
-	private static final int DATABASE_VERSION = 6;
+	private static final int DATABASE_VERSION = 7;
 	public static final String DATABASE_NAME = "waid.db";
 	public static final String TABLE_EVALUATIONS = "evaluations";
 	public static final String TABLE_TRAINING_DATA = "training_data";
+	public static final String TABLE_VEHICLES = "vehicles";
 
 	public static final String COLUMN_ID = "_id";
 	// evaluations table columns
@@ -23,6 +24,7 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 	public static final String COLUMN_MING = "ming";
 	public static final String COLUMN_MAXG = "maxg";
 	public static final String COLUMN_STDG = "stdg";
+	public static final String COLUMN_ICON = "icon";
 
 	// history table creation query
 	private static final String CREATE_TABLE_EVALUATIONS = "CREATE TABLE IF NOT EXISTS "
@@ -68,7 +70,19 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 			+ COLUMN_AVGG
 			+ " REAL, "
 			+ COLUMN_MING
-			+ " REAL, " + COLUMN_MAXG + " REAL, " + COLUMN_STDG + " REAL);";
+			+ " REAL, "
+			+ COLUMN_MAXG + " REAL, " + COLUMN_STDG + " REAL);";
+
+	// vehicles table creation query
+	private static final String CREATE_TABLE_VEHICLES = "CREATE TABLE IF NOT EXISTS "
+			+ TABLE_VEHICLES
+			+ " ("
+			+ COLUMN_ID
+			+ " INTEGER PRIMARY KEY AUTOINCREMENT, "
+			+ COLUMN_CATEGORY
+			+ " TEXT, "
+			+ COLUMN_ICON
+			+ " BLOB);";
 
 	public DatabaseOpenHelper(Context context) {
 		super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -79,12 +93,14 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 	public void onCreate(SQLiteDatabase db) {
 		db.execSQL(CREATE_TABLE_EVALUATIONS);
 		db.execSQL(CREATE_TABLE_TRAINING_DATA);
+		db.execSQL(CREATE_TABLE_VEHICLES);
 	}
 
 	@Override
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_EVALUATIONS);
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_TRAINING_DATA);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_VEHICLES);
 		onCreate(db);
 	}
 

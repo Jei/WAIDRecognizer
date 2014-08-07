@@ -1,5 +1,6 @@
 package it.unibo.cs.jonus.waidrec;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -10,6 +11,8 @@ import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteQueryBuilder;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 
 public class EvaluationsProvider extends ContentProvider {
@@ -24,13 +27,20 @@ public class EvaluationsProvider extends ContentProvider {
 	private static final int ALL_TRAINING_DATA = 13;
 	private static final int DELETE_TRAINING_VEHICLE = 14;
 	private static final int ERASE_TRAINING_DATA = 999;
+	private static final int ALL_VEHICLES = 23;
+	private static final int ADD_VEHICLE = 21;
+	private static final int REMOVE_VEHICLE = 24;
+	private static final int ERASE_VEHICLES = 333;
 	private static final String AUTHORITY = "it.unibo.cs.jonus.waidrec.evaluationsprovider";
 	private static final String BASE_PATH = "evaluations";
 	private static final String TRAINING_PATH = "training_data";
+	private static final String VEHICLES_PATH = "vehicles";
 	public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY
 			+ "/" + BASE_PATH);
 	public static final Uri TRAINING_DATA_URI = Uri.parse("content://"
 			+ AUTHORITY + "/" + TRAINING_PATH);
+	public static final Uri VEHICLES_URI = Uri.parse("content://" + AUTHORITY
+			+ "/" + VEHICLES_PATH);
 	public static final String PATH_LAST_EVALUATION = "/last";
 	public static final String PATH_ALL_EVALUATIONS = "/all";
 	public static final String PATH_SOME_EVALUATIONS = "/some";
@@ -39,6 +49,10 @@ public class EvaluationsProvider extends ContentProvider {
 	public static final String PATH_ALL_TRAINING_DATA = "/all";
 	public static final String PATH_ERASE_TRAINING_DATA = "/erase";
 	public static final String PATH_DELETE_TRAINING_VEHICLE = "/delete_vehicle";
+	public static final String PATH_ALL_VEHICLES = "/all";
+	public static final String PATH_REMOVE_VEHICLE = "/remove";
+	public static final String PATH_ERASE_VEHICLES = "/erase";
+	public static final String PATH_ADD_VEHICLE = "/add";
 	private static final int MAX_EVALUATIONS = 86400;
 
 	private static final UriMatcher sUriMatcher = new UriMatcher(
@@ -62,6 +76,14 @@ public class EvaluationsProvider extends ContentProvider {
 				ERASE_TRAINING_DATA);
 		sUriMatcher.addURI(AUTHORITY, TRAINING_PATH
 				+ PATH_DELETE_TRAINING_VEHICLE, DELETE_TRAINING_VEHICLE);
+		sUriMatcher.addURI(AUTHORITY, VEHICLES_PATH + PATH_ALL_VEHICLES,
+				ALL_VEHICLES);
+		sUriMatcher.addURI(AUTHORITY, VEHICLES_PATH + PATH_ADD_VEHICLE,
+				ADD_VEHICLE);
+		sUriMatcher.addURI(AUTHORITY, VEHICLES_PATH + PATH_REMOVE_VEHICLE,
+				REMOVE_VEHICLE);
+		sUriMatcher.addURI(AUTHORITY, VEHICLES_PATH + PATH_ERASE_VEHICLES,
+				ERASE_VEHICLES);
 	}
 
 	public EvaluationsProvider() {
@@ -85,6 +107,13 @@ public class EvaluationsProvider extends ContentProvider {
 		case DELETE_TRAINING_VEHICLE:
 			count = db.delete(DatabaseOpenHelper.TABLE_TRAINING_DATA,
 					DatabaseOpenHelper.COLUMN_CATEGORY + "=?", selectionArgs);
+			break;
+		case REMOVE_VEHICLE:
+			count = db.delete(DatabaseOpenHelper.TABLE_VEHICLES,
+					DatabaseOpenHelper.COLUMN_CATEGORY + "=?", selectionArgs);
+			break;
+		case ERASE_VEHICLES:
+			count = db.delete(DatabaseOpenHelper.TABLE_VEHICLES, "1", null);
 			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI: " + uri);
@@ -125,6 +154,11 @@ public class EvaluationsProvider extends ContentProvider {
 			id = db.insert(DatabaseOpenHelper.TABLE_TRAINING_DATA, null, values);
 
 			newUri = Uri.parse(TRAINING_PATH + "/" + id);
+			break;
+		case ADD_VEHICLE:
+			id = db.insert(DatabaseOpenHelper.TABLE_VEHICLES, null, values);
+
+			newUri = Uri.parse(VEHICLES_PATH + "/" + id);
 			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI: " + uri);
@@ -181,6 +215,12 @@ public class EvaluationsProvider extends ContentProvider {
 			sortOrder = "_id DESC";
 			queryBuilder.setTables(DatabaseOpenHelper.TABLE_TRAINING_DATA);
 			break;
+		case ALL_VEHICLES:
+			// discard selection values, add sorting
+			selection = null;
+			sortOrder = "_id DESC";
+			queryBuilder.setTables(DatabaseOpenHelper.TABLE_VEHICLES);
+			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI: " + uri);
 		}
@@ -207,7 +247,8 @@ public class EvaluationsProvider extends ContentProvider {
 				DatabaseOpenHelper.COLUMN_AVGA, DatabaseOpenHelper.COLUMN_MINA,
 				DatabaseOpenHelper.COLUMN_MAXA, DatabaseOpenHelper.COLUMN_STDA,
 				DatabaseOpenHelper.COLUMN_AVGG, DatabaseOpenHelper.COLUMN_MING,
-				DatabaseOpenHelper.COLUMN_MAXG, DatabaseOpenHelper.COLUMN_STDG };
+				DatabaseOpenHelper.COLUMN_MAXG, DatabaseOpenHelper.COLUMN_STDG,
+				DatabaseOpenHelper.COLUMN_ICON };
 		if (projection != null) {
 			HashSet<String> requestedColumns = new HashSet<String>(
 					Arrays.asList(projection));
@@ -335,6 +376,62 @@ public class EvaluationsProvider extends ContentProvider {
 	}
 
 	/**
+	 * Create a VehicleItem from a Cursor from EvaluationsProvider
+	 * 
+	 * @param cursor
+	 *            the Cursor to convert
+	 * @return a VehicleItem with the values from the Cursor
+	 */
+	public static VehicleItem cursorToVehicleItem(Cursor cursor) {
+		VehicleItem item = new VehicleItem();
+
+		String category = cursor.getString(cursor
+				.getColumnIndexOrThrow(DatabaseOpenHelper.COLUMN_CATEGORY));
+		byte[] iconByteArray = cursor.getBlob(cursor
+				.getColumnIndexOrThrow(DatabaseOpenHelper.COLUMN_ICON));
+		Bitmap icon = BitmapFactory.decodeByteArray(iconByteArray, 0,
+				iconByteArray.length);
+
+		item.setCategory(category);
+		item.setIcon(icon);
+
+		return item;
+	}
+
+	/**
+	 * Create a VehicleItem array from a Cursor from EvaluationsProvider
+	 * 
+	 * @param cursor
+	 *            the Cursor to convert
+	 * @return an ArrayList of VehicleItem with the rows from the Cursor
+	 */
+	public static ArrayList<VehicleItem> cursorToVehicleItemArray(Cursor cursor) {
+		ArrayList<VehicleItem> itemArray = new ArrayList<VehicleItem>();
+
+		VehicleItem item;
+		cursor.moveToFirst();
+		while (!cursor.isAfterLast()) {
+			item = new VehicleItem();
+
+			String category = cursor.getString(cursor
+					.getColumnIndexOrThrow(DatabaseOpenHelper.COLUMN_CATEGORY));
+			byte[] iconByteArray = cursor.getBlob(cursor
+					.getColumnIndexOrThrow(DatabaseOpenHelper.COLUMN_ICON));
+			Bitmap icon = BitmapFactory.decodeByteArray(iconByteArray, 0,
+					iconByteArray.length);
+
+			item.setCategory(category);
+			item.setIcon(icon);
+
+			itemArray.add(item);
+
+			cursor.moveToNext();
+		}
+
+		return itemArray;
+	}
+
+	/**
 	 * Create ContentValues from a VehicleInstance
 	 * 
 	 * @param instance
@@ -362,6 +459,30 @@ public class EvaluationsProvider extends ContentProvider {
 		values.put(DatabaseOpenHelper.COLUMN_MAXG, gyroFeatures.getMaximum());
 		values.put(DatabaseOpenHelper.COLUMN_STDG,
 				gyroFeatures.getStandardDeviation());
+
+		return values;
+	}
+	
+	/**
+	 * Create ContentValues from a VehicleItem
+	 * 
+	 * @param instance
+	 *            the VehicleItem to convert to ContentValues
+	 * @return ContentValues to use with this EvaluationsProvider
+	 */
+	public static ContentValues vehicleItemToContentValues(
+			VehicleItem item) {
+		ContentValues values = new ContentValues();
+
+		String category = item.getCategory();
+		Bitmap icon = item.getIcon();
+		// Convert the icon to a byte array
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		icon.compress(Bitmap.CompressFormat.PNG, 100, stream);
+		byte[] byteArray = stream.toByteArray();
+
+		values.put(DatabaseOpenHelper.COLUMN_CATEGORY, category);
+		values.put(DatabaseOpenHelper.COLUMN_ICON, byteArray);
 
 		return values;
 	}
