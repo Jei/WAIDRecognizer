@@ -1,15 +1,7 @@
 package it.unibo.cs.jonus.waidrec;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
 import android.content.Context;
@@ -20,23 +12,21 @@ import weka.core.Attribute;
 import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.SerializationHelper;
 import weka.core.converters.ArffLoader;
 
 public class ModelManager {
 
 	private static final String MODEL_FILE_EXTENSION = ".model";
-	private static final String VEHICLES_FILE_NAME = "vehicles";
 
 	private File mFilesDir;
 	private Classifier mClassifier;
+	private Instances mHeader;
 	private File mModelFile;
-	private File mVehiclesFile;
 
 	public <C extends Classifier> ModelManager(Context context,
 			Class<C> classifierType) {
 		mFilesDir = context.getFilesDir();
-		mVehiclesFile = new File(mFilesDir.getPath() + File.separator
-				+ VEHICLES_FILE_NAME);
 		try {
 			mClassifier = classifierType.newInstance();
 		} catch (InstantiationException e) {
@@ -55,8 +45,11 @@ public class ModelManager {
 			@SuppressWarnings("unchecked")
 			public void run() {
 				try {
-					mClassifier = (C) weka.core.SerializationHelper
-							.read(mModelFile.getAbsolutePath());
+					Object[] mah = weka.core.SerializationHelper
+							.readAll(mModelFile.getAbsolutePath());
+					mClassifier = (C) mah[0];
+					mHeader = (Instances) mah[1];
+					mHeader.setClassIndex(8);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -66,6 +59,13 @@ public class ModelManager {
 		Thread deserializationThread = new Thread(null,
 				deserializationRunnable, "modelOpener", 204800);
 		deserializationThread.start();
+		// FIXME don't hang the UI thread
+		try {
+			deserializationThread.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public ModelManager(Context context) {
@@ -117,69 +117,6 @@ public class ModelManager {
 	}
 
 	/**
-	 * Adds a vehicle to the list of supported vehicles
-	 * 
-	 * @param vehicleName
-	 *            the name of the vehicle to add
-	 * @return true if the vehicle is successfully added, false otherwise
-	 */
-	public boolean addVehicle(String vehicleName) {
-		ArrayList<String> vehiclesList = getVehicles();
-		boolean added = false;
-
-		// Check string and if already registered
-		String vt = vehicleName.replaceAll("\\s+", "");
-		if (!vehiclesList.contains(vehicleName) && !vt.equals("")) {
-			// Add new line to the vehicles file
-			BufferedWriter writer = null;
-			try {
-				writer = new BufferedWriter(new FileWriter(mVehiclesFile, true));
-				writer.write(vehicleName);
-				writer.newLine();
-				writer.close();
-				added = true;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-		return added;
-	}
-
-	/**
-	 * Removes a vehicle from the list of supported vehicles
-	 * 
-	 * @param vehicleName
-	 *            the name of the vehicle to remove
-	 * @return true if the vehicle is successfully removed, false otherwise
-	 */
-	public boolean removeVehicle(String vehicleName) {
-		ArrayList<String> vehiclesList = getVehicles();
-		boolean removed = false;
-
-		// Check if string is already registered
-		if (vehiclesList.contains(vehicleName)) {
-			// Rewrite the vehicles file without this vehicle
-			vehiclesList.remove(vehicleName);
-			BufferedWriter writer = null;
-			try {
-				writer = new BufferedWriter(
-						new FileWriter(mVehiclesFile, false));
-				for (String v : vehiclesList) {
-					writer.write(v);
-					writer.newLine();
-				}
-				writer.close();
-				removed = true;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-		return removed;
-	}
-
-	/**
 	 * Trains a classification model using the given list of vehicle instances
 	 * 
 	 * @param vehicleInstances
@@ -190,7 +127,26 @@ public class ModelManager {
 			throws Exception {
 		Instances wekaInstances;
 		FastVector attributes = getAttributes();
-		ArrayList<String> vehicles = getVehicles();
+
+		// Get list of vehicles from the vehicle instances
+		ArrayList<String> vehicles = new ArrayList<String>();
+		for (VehicleInstance i : vehicleInstances) {
+			String vehicle = i.getCategory();
+			if (!vehicles.contains(vehicle)) {
+				vehicles.add(vehicle);
+			}
+		}
+		// Get class attribute from the list
+		FastVector fvClassVal = new FastVector();
+		for (String vehicle : vehicles) {
+			fvClassVal.addElement(vehicle);
+		}
+		// XXX RandomForest does not accept datasets with just one class value
+		fvClassVal.addElement(" padding ");
+		Attribute newClassAttribute = new Attribute("theClass", fvClassVal);
+		// Substitute the class attribute
+		attributes.removeElementAt(8);
+		attributes.addElement(newClassAttribute);
 
 		// Convert the list in Instances
 		wekaInstances = new Instances("Rel", attributes, 0);
@@ -233,12 +189,9 @@ public class ModelManager {
 		// Generate model using a classifier
 		mClassifier.buildClassifier(wekaInstances);
 		Log.v("ModelManager", "model generated");
-		// Write the new model to file
-		ObjectOutputStream output = new ObjectOutputStream(
-				new FileOutputStream(mModelFile));
-		output.writeObject(mClassifier);
-		output.flush();
-		output.close();
+		// Write the new model to file with the header
+		SerializationHelper.writeAll(mModelFile.getAbsolutePath(),
+				new Object[] { mClassifier, wekaInstances });
 		Log.v("ModelManager", "model wrote to file");
 
 	}
@@ -251,27 +204,9 @@ public class ModelManager {
 	public ArrayList<String> getVehicles() {
 		ArrayList<String> vehiclesList = new ArrayList<String>();
 
-		try {
-			FileInputStream in = new FileInputStream(mVehiclesFile);
-			BufferedReader reader = new BufferedReader(
-					new InputStreamReader(in));
-
-			// Read from the vehicles file
-			String vehicle = reader.readLine();
-			while (vehicle != null) {
-				// Escape whitespace lines
-				String vt = vehicle.replaceAll("\\s+", "");
-				if (!vt.equals("")) {
-					vehiclesList.add(vehicle);
-				}
-				vehicle = reader.readLine();
-			}
-
-			reader.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
+		Attribute classAttribute = mHeader.attribute(8);
+		for (int i = 0; i < classAttribute.numValues(); i++) {
+			vehiclesList.add(classAttribute.value(i));
 		}
 
 		return vehiclesList;
@@ -403,12 +338,7 @@ public class ModelManager {
 		Attribute attribute8 = new Attribute("stdg");
 
 		// Declare the class attribute along with its values
-		ArrayList<String> vehiclesList = getVehicles();
-		FastVector fvClassVal = new FastVector();
-		for (String vehicle : vehiclesList) {
-			fvClassVal.addElement(vehicle);
-		}
-		Attribute classAttribute = new Attribute("theClass", fvClassVal);
+		Attribute classAttribute = mHeader.classAttribute();
 
 		// Declare the feature vector
 		wekaAttributes = new FastVector(9);
