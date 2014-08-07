@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -17,10 +18,13 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -59,6 +63,7 @@ public class MainActivity extends FragmentActivity implements
 	private SharedPreferences mSharedPrefs;
 	private NotificationManager mNotificationManager;
 
+	private static final int MODIFY_PREFERENCES = 1; // The request code
 	private static final int ERROR_MODEL_GENERATION_IOEXCEPTION = 10;
 	private static final int ERROR_MODEL_GENERATION_EXCEPTION = 11;
 	public static final int NOTIFICATION_MODEL_GENERATION_IOEXCEPTION = R.string.model_generation_ioexception;
@@ -76,6 +81,8 @@ public class MainActivity extends FragmentActivity implements
 			DatabaseOpenHelper.COLUMN_STDA, DatabaseOpenHelper.COLUMN_AVGG,
 			DatabaseOpenHelper.COLUMN_MING, DatabaseOpenHelper.COLUMN_MAXG,
 			DatabaseOpenHelper.COLUMN_STDG };
+	public static final String[] vehicleColumnsProjection = {
+			DatabaseOpenHelper.COLUMN_CATEGORY, DatabaseOpenHelper.COLUMN_ICON };
 
 	// Thread messages handler
 	private static class ThreadHandler extends Handler {
@@ -308,9 +315,8 @@ public class MainActivity extends FragmentActivity implements
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case R.id.action_settings:
-			Intent prefsActivity = new Intent(this,
-					MainPrefsActivity.class);
-			startActivity(prefsActivity);
+			Intent prefsActivity = new Intent(this, MainPrefsActivity.class);
+			startActivityForResult(prefsActivity, MODIFY_PREFERENCES);
 			break;
 		default:
 			return false;
@@ -335,6 +341,31 @@ public class MainActivity extends FragmentActivity implements
 	@Override
 	public void onTabReselected(ActionBar.Tab tab,
 			FragmentTransaction fragmentTransaction) {
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		// If we called MainPrefsActivity
+		if (requestCode == MODIFY_PREFERENCES) {
+			// If we have to reset the model
+			if (resultCode == MainPrefsActivity.RESULT_RESET) {
+				// Create progress dialog
+				final ProgressDialog progressDialog = new ProgressDialog(this);
+				progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+				progressDialog.setMessage("Generating new model...");
+				progressDialog.setIndeterminate(true);
+				progressDialog.setCancelable(false);
+				progressDialog.show();
+
+				// Run model reset thread
+				ModelResetRunnable runnable = new ModelResetRunnable(this,
+						progressDialog);
+				Thread asyncThread = new Thread(null, runnable, "ModelReset",
+						204800);
+				asyncThread.start();
+				showNotification(NOTIFICATION_GENERATING_MODEL, false, true);
+			}
+		}
 	}
 
 	/**
@@ -388,7 +419,7 @@ public class MainActivity extends FragmentActivity implements
 			return null;
 		}
 	}
-	
+
 	// TODO create method for model generation
 
 	private void resetFromAssets() {
@@ -398,7 +429,10 @@ public class MainActivity extends FragmentActivity implements
 		FileInputStream carAsset;
 		FileInputStream trainAsset;
 		FileInputStream idleAsset;
-		FileInputStream vehiclesAsset;
+		Bitmap walkingIcon;
+		Bitmap carIcon;
+		Bitmap trainIcon;
+		Bitmap idleIcon;
 
 		try {
 			// Get assets
@@ -406,19 +440,21 @@ public class MainActivity extends FragmentActivity implements
 			carAsset = assets.openFd("car.gif").createInputStream();
 			trainAsset = assets.openFd("train.gif").createInputStream();
 			idleAsset = assets.openFd("idle.gif").createInputStream();
-			vehiclesAsset = assets.openFd("vehicles").createInputStream();
+			walkingIcon = getBitmapFromAsset("walking_00b0b0.png");
+			carIcon = getBitmapFromAsset("car_00b0b0.png");
+			trainIcon = getBitmapFromAsset("train_00b0b0.png");
+			idleIcon = getBitmapFromAsset("idle_00b0b0.png");
 
 			// Copy the arff files to app files directory
 			File newWalkingFile = new File(filesDir.getPath() + "/walking.arff");
 			File newCarFile = new File(filesDir.getPath() + "/car.arff");
 			File newTrainFile = new File(filesDir.getPath() + "/train.arff");
 			File newIdleFile = new File(filesDir.getPath() + "/idle.arff");
-			File newVehiclesFile = new File(filesDir.getPath() + "/vehicles");
 
 			FileInputStream[] streams = { walkingAsset, carAsset, trainAsset,
-					idleAsset, vehiclesAsset };
+					idleAsset };
 			File[] newFiles = { newWalkingFile, newCarFile, newTrainFile,
-					newIdleFile, newVehiclesFile };
+					newIdleFile };
 			for (int i = 0; i < newFiles.length; i++) {
 				OutputStream os = null;
 				try {
@@ -434,9 +470,6 @@ public class MainActivity extends FragmentActivity implements
 				}
 			}
 
-			File[] vehicleFiles = { newWalkingFile, newCarFile, newTrainFile,
-					newIdleFile };
-
 			// Erase training data from the database
 			Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
 					+ EvaluationsProvider.PATH_ERASE_TRAINING_DATA);
@@ -445,8 +478,7 @@ public class MainActivity extends FragmentActivity implements
 			// Insert the data from the files into the database
 			uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
 					+ EvaluationsProvider.PATH_INSERT_TRAINING_ITEM);
-			getContentResolver().delete(uri, null, null);
-			for (File f : vehicleFiles) {
+			for (File f : newFiles) {
 				ArrayList<VehicleInstance> instances = ModelManager
 						.readArffFile(f);
 
@@ -454,10 +486,26 @@ public class MainActivity extends FragmentActivity implements
 					ContentValues values = EvaluationsProvider
 							.vehicleInstanceToContentValues(i);
 
-					getContentResolver().insert(
-							EvaluationsProvider.TRAINING_DATA_URI, values);
+					getContentResolver().insert(uri, values);
 				}
 			}
+
+			// Create the VehicleItem objects and insert them in the db
+			String[] vehicles = { "walking", "car", "train", "idle" };
+			Bitmap[] icons = { walkingIcon, carIcon, trainIcon, idleIcon };
+			uri = Uri.parse(EvaluationsProvider.VEHICLES_URI
+					+ EvaluationsProvider.PATH_ADD_VEHICLE);
+			for (int i = 0; i < 4; i++) {
+				VehicleItem item = new VehicleItem();
+				item.setCategory(vehicles[i]);
+				item.setIcon(icons[i]);
+
+				ContentValues values = EvaluationsProvider
+						.vehicleItemToContentValues(item);
+
+				getContentResolver().insert(uri, values);
+			}
+
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -496,6 +544,15 @@ public class MainActivity extends FragmentActivity implements
 		currentValue = mSharedPrefs.getBoolean("first_run", true);
 		mSharedPrefs.edit().putBoolean("first_run", false).commit();
 		return currentValue;
+	}
+
+	private Bitmap getBitmapFromAsset(String fileName) throws IOException {
+		AssetManager assetManager = getAssets();
+
+		InputStream istr = assetManager.open(fileName);
+		Bitmap bitmap = BitmapFactory.decodeStream(istr);
+
+		return bitmap;
 	}
 
 }
