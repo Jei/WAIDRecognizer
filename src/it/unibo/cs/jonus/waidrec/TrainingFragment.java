@@ -6,6 +6,7 @@ package it.unibo.cs.jonus.waidrec;
 import it.unibo.cs.jonus.waidrec.MainActivity.ModelGenRunnable;
 
 import java.util.ArrayList;
+
 import android.support.v4.app.Fragment;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -52,6 +53,7 @@ public class TrainingFragment extends Fragment {
 	private ImageView offView;
 	private RadioGroup writeModeGroup;
 	private Spinner vehicleSpinner;
+	private ArrayAdapter<String> mAdapter;
 	private RadioButton overwriteRadio;
 	private RadioButton appendRadio;
 
@@ -99,23 +101,13 @@ public class TrainingFragment extends Fragment {
 				.findViewById(R.id.overwriteRadioButton);
 		appendRadio = (RadioButton) view.findViewById(R.id.appendRadioButton);
 
-		// Get the list of VehicleItem from the db
-		Uri uri = Uri.parse(EvaluationsProvider.VEHICLES_URI
-				+ EvaluationsProvider.PATH_ALL_VEHICLES);
-		Cursor cursor = getActivity().getContentResolver().query(uri,
-				MainActivity.vehicleColumnsProjection, null, null, null);
-		ArrayList<VehicleItem> items = EvaluationsProvider
-				.cursorToVehicleItemArray(cursor);
-		mVehicles = new ArrayList<String>();
-		for (VehicleItem i : items) {
-			mVehicles.add(i.getCategory());
-		}
-		ArrayAdapter<String> adapter = new ArrayAdapter<String>(mActivity,
+		// Prepare the spinner for the vehicles
+		mAdapter = new ArrayAdapter<String>(mActivity,
 				android.R.layout.simple_spinner_item, mVehicles);
 		// Specify the layout to use when the list of choices appears
-		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		mAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		// Apply the adapter to the spinner
-		vehicleSpinner.setAdapter(adapter);
+		vehicleSpinner.setAdapter(mAdapter);
 
 		// Restore UI elements from the saved state
 		if (savedInstanceState != null) {
@@ -138,6 +130,19 @@ public class TrainingFragment extends Fragment {
 	@Override
 	public void onResume() {
 		super.onResume();
+
+		// Get the list of VehicleItem from the db
+		Uri uri = Uri.parse(EvaluationsProvider.VEHICLES_URI
+				+ EvaluationsProvider.PATH_ALL_VEHICLES);
+		Cursor cursor = getActivity().getContentResolver().query(uri,
+				MainActivity.vehicleColumnsProjection, null, null, null);
+		ArrayList<VehicleItem> items = EvaluationsProvider
+				.cursorToVehicleItemArray(cursor);
+		mVehicles.clear();
+		for (VehicleItem i : items) {
+			mVehicles.add(i.getCategory());
+		}
+		mAdapter.notifyDataSetChanged();
 
 		// If the training service is already running, update the UI
 		boolean isServiceRunning = mSharedPrefs.getBoolean(
