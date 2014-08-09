@@ -3,7 +3,9 @@ package it.unibo.cs.jonus.waidrec;
 import java.util.List;
 
 import android.annotation.TargetApi;
+import android.app.AlertDialog;
 import android.app.NotificationManager;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Build;
@@ -19,6 +21,7 @@ public class MainPrefsActivity extends PreferenceActivity {
 
 	public static final int RESULT_NO_OP = 0;
 	public static final int RESULT_RESET = 1;
+	public static final int RESULT_MODIFIED = 2;
 	public static final String KEY_REC_SAMPLING_DELAY = "pref_rec_sampling_delay";
 	private static final int MAX_SAMPLING_DELAY = 60;
 	private static final int MIN_SAMPLING_DELAY = 1;
@@ -34,7 +37,7 @@ public class MainPrefsActivity extends PreferenceActivity {
 		super.onCreate(savedInstanceState);
 
 		mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-		
+
 		// Set the result of this activity
 		setResult(RESULT_NO_OP);
 	}
@@ -70,10 +73,30 @@ public class MainPrefsActivity extends PreferenceActivity {
 		super.onHeaderClick(header, position);
 
 		if (header.id == R.id.reset_default_model) {
-			// TODO add confirmation dialog
-			// Return to the parent activity with reset code
-			setResult(RESULT_RESET);
-			finish();
+			AlertDialog.Builder confirmDialog = new AlertDialog.Builder(this);
+			confirmDialog.setMessage(getText(R.string.confirm_model_reset));
+			confirmDialog.setTitle("Warning");
+			confirmDialog.setPositiveButton(android.R.string.ok,
+					new DialogInterface.OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							// Return to the parent activity with reset code
+							setResult(RESULT_RESET);
+							finish();
+						}
+					});
+			confirmDialog.setNegativeButton(android.R.string.cancel,
+					new DialogInterface.OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							dialog.dismiss();
+						}
+					});
+			confirmDialog.show();
+		}
+		if (header.id == R.id.vehicles_fragment_header) {
+			// Vehicles fragment was opened
+			setResult(RESULT_MODIFIED);
 		}
 	}
 
@@ -82,6 +105,8 @@ public class MainPrefsActivity extends PreferenceActivity {
 		if (RecPrefsFragment.class.getName().equals(fragmentName))
 			return true;
 		if (TrnPrefsFragment.class.getName().equals(fragmentName))
+			return true;
+		if (VehiclesFragment.class.getName().equals(fragmentName))
 			return true;
 		return false;
 	}

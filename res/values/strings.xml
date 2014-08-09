@@ -63,5 +63,9 @@
     <string name="delete_history_file">Delete</string>
     <string name="recognizer">Recognizer</string>
     <string name="preferences">Preferences</string>
+    <string name="vehicles">Vehicles</string>
+    <string name="add_vehicle">Add Vehicle</string>
+    <string name="remove_vehicle">Remove Vehicle</string>
+    <string name="confirm_model_reset">This will restore the default model and vehicles. Continue?</string>
 
 </resources>

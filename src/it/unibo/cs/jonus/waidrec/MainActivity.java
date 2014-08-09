@@ -365,6 +365,26 @@ public class MainActivity extends FragmentActivity implements
 				asyncThread.start();
 				showNotification(NOTIFICATION_GENERATING_MODEL, false, true);
 			}
+			// If we have to generate the model
+			if (resultCode == MainPrefsActivity.RESULT_MODIFIED) {
+				// Create progress dialog
+				final ProgressDialog progressDialog = new ProgressDialog(this);
+				progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+				progressDialog.setMessage(getResources().getString(
+						MainActivity.NOTIFICATION_GENERATING_MODEL));
+				progressDialog.setIndeterminate(true);
+				progressDialog.setCancelable(false);
+				progressDialog.show();
+
+				// Run model generation thread
+				ModelGenRunnable runnable = new ModelGenRunnable(this,
+						progressDialog);
+				Thread asyncThread = new Thread(null, runnable, "ModelGen",
+						204800);
+				asyncThread.start();
+				showNotification(MainActivity.NOTIFICATION_GENERATING_MODEL,
+						false, true);
+			}
 		}
 	}
 
@@ -473,6 +493,11 @@ public class MainActivity extends FragmentActivity implements
 			// Erase training data from the database
 			Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
 					+ EvaluationsProvider.PATH_ERASE_TRAINING_DATA);
+			getContentResolver().delete(uri, null, null);
+
+			// Delete all the vehicles
+			uri = Uri.parse(EvaluationsProvider.VEHICLES_URI
+					+ EvaluationsProvider.PATH_ERASE_VEHICLES);
 			getContentResolver().delete(uri, null, null);
 
 			// Insert the data from the files into the database
