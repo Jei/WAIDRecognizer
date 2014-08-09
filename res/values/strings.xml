@@ -57,6 +57,7 @@
 
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
+    <color name="lblack">#101010</color>
 
     <string name="title_activity_history">HistoryActivity</string>
     <string name="history">History</string>
@@ -67,5 +68,6 @@
     <string name="add_vehicle">Add Vehicle</string>
     <string name="remove_vehicle">Remove Vehicle</string>
     <string name="confirm_model_reset">This will restore the default model and vehicles. Continue?</string>
+    <string name="instances_suffix">instances</string>
 
 </resources>

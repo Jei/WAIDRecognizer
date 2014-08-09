@@ -26,6 +26,7 @@ public class EvaluationsProvider extends ContentProvider {
 	private static final int INSERT_TRAINING_ITEM = 11;
 	private static final int ALL_TRAINING_DATA = 13;
 	private static final int DELETE_TRAINING_VEHICLE = 14;
+	private static final int VEHICLE_TRAINING_DATA = 12;
 	private static final int ERASE_TRAINING_DATA = 999;
 	private static final int ALL_VEHICLES = 23;
 	private static final int ADD_VEHICLE = 21;
@@ -47,6 +48,7 @@ public class EvaluationsProvider extends ContentProvider {
 	public static final String PATH_ERASE_EVALUATIONS = "/erase";
 	public static final String PATH_INSERT_TRAINING_ITEM = "/insert";
 	public static final String PATH_ALL_TRAINING_DATA = "/all";
+	public static final String PATH_VEHICLE_TRAINING_DATA = "/vehicle";
 	public static final String PATH_ERASE_TRAINING_DATA = "/erase";
 	public static final String PATH_DELETE_TRAINING_VEHICLE = "/delete_vehicle";
 	public static final String PATH_ALL_VEHICLES = "/all";
@@ -72,6 +74,8 @@ public class EvaluationsProvider extends ContentProvider {
 						INSERT_TRAINING_ITEM);
 		sUriMatcher.addURI(AUTHORITY, TRAINING_PATH + PATH_ALL_TRAINING_DATA,
 				ALL_TRAINING_DATA);
+		sUriMatcher.addURI(AUTHORITY, TRAINING_PATH + PATH_VEHICLE_TRAINING_DATA,
+				VEHICLE_TRAINING_DATA);
 		sUriMatcher.addURI(AUTHORITY, TRAINING_PATH + PATH_ERASE_TRAINING_DATA,
 				ERASE_TRAINING_DATA);
 		sUriMatcher.addURI(AUTHORITY, TRAINING_PATH
@@ -212,6 +216,11 @@ public class EvaluationsProvider extends ContentProvider {
 		case ALL_TRAINING_DATA:
 			// discard selection values, add sorting
 			selection = null;
+			sortOrder = "_id DESC";
+			queryBuilder.setTables(DatabaseOpenHelper.TABLE_TRAINING_DATA);
+			break;
+		case VEHICLE_TRAINING_DATA:
+			// add sorting
 			sortOrder = "_id DESC";
 			queryBuilder.setTables(DatabaseOpenHelper.TABLE_TRAINING_DATA);
 			break;

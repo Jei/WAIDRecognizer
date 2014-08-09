@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -35,12 +36,32 @@ public class VehiclesListAdapter extends ArrayAdapter<VehicleItem> {
 
 		// Extract evaluation
 		VehicleItem vehicle = getItem(position);
+		String vehicleName = vehicle.getCategory();
 
 		// Set item's name
 		TextView txtName = (TextView) convertView
 				.findViewById(R.id.vehicle_name);
-		txtName.setText(vehicle.getCategory());
+		txtName.setText(vehicleName);
 
+		// Get number of instances for this vehicle
+		Uri uri = Uri.parse(EvaluationsProvider.TRAINING_DATA_URI
+				+ EvaluationsProvider.PATH_VEHICLE_TRAINING_DATA);
+		Cursor cursor = getContext().getContentResolver().query(uri,
+				MainActivity.allColumnsProjection,
+				DatabaseOpenHelper.COLUMN_CATEGORY + " =?",
+				new String[] { vehicleName }, null);
+		ArrayList<VehicleInstance> instances = EvaluationsProvider
+				.cursorToVehicleInstanceArray(cursor);
+		cursor.close();
+		int instancesCount = instances.size();
+		TextView txtInstances = (TextView) convertView
+				.findViewById(R.id.vehicle_instances_number);
+		txtInstances.setText(instancesCount
+				+ " "
+				+ getContext().getResources().getString(
+						R.string.instances_suffix));
+
+		// Create remove vehicle button
 		Button deleteButton = (Button) convertView
 				.findViewById(R.id.remove_vehicle_button);
 		deleteButton.setTag(vehicle);

@@ -10,13 +10,24 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="25sp"
-        android:layout_alignParentLeft="true" />
+        android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true" />
+    
+    <TextView
+        android:id="@+id/vehicle_instances_number"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:layout_toRightOf="@id/vehicle_name"
+        android:layout_marginLeft="15dp"
+        android:layout_centerVertical="true" />
 
 	<Button 
 	    android:id="@+id/remove_vehicle_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@drawable/ic_action_discard_dark"
-        android:layout_alignParentRight="true"/>
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"/>
 
 </RelativeLayout>
