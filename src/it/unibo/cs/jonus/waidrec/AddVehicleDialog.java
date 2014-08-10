@@ -22,7 +22,9 @@ public class AddVehicleDialog extends DialogFragment {
 	private EditText nameEditText;
 	private static int[] sIconsRes = { R.drawable.idle_00b0b0,
 			R.drawable.walking_00b0b0, R.drawable.car_00b0b0,
-			R.drawable.train_00b0b0 };
+			R.drawable.train_00b0b0, R.drawable.bicycle_00b0b0,
+			R.drawable.bus_00b0b0, R.drawable.boat_00b0b0,
+			R.drawable.plane_00b0b0, R.drawable.running_00b0b0 };
 
 	public interface VehicleDialogListener {
 		public void onDialogPositiveClick(DialogFragment dialog);
@@ -84,11 +86,11 @@ public class AddVehicleDialog extends DialogFragment {
 
 		return builder.create();
 	}
-	
+
 	public void registerListener(VehicleDialogListener listener) {
 		mListener = listener;
 	}
-	
+
 	public void unregisterListener() {
 		mListener = null;
 	}
