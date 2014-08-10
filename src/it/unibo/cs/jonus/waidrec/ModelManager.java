@@ -338,7 +338,12 @@ public class ModelManager {
 		Attribute attribute8 = new Attribute("stdg");
 
 		// Declare the class attribute along with its values
-		Attribute classAttribute = mHeader.classAttribute();
+		Attribute classAttribute = null;
+		if (mHeader != null) {
+			classAttribute = mHeader.classAttribute();
+		} else {
+			classAttribute = new Attribute("theClass", new FastVector());
+		}
 
 		// Declare the feature vector
 		wekaAttributes = new FastVector(9);
