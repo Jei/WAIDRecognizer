@@ -19,7 +19,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -106,17 +105,7 @@ public class RecognizerFragment extends Fragment {
 		vehicleView = (ImageView) view.findViewById(R.id.vehicleView);
 		onoffView = (ImageView) view.findViewById(R.id.onoffView);
 
-		// Get vehicles and icons from the db
-		Uri uri = Uri.parse(EvaluationsProvider.VEHICLES_URI
-				+ EvaluationsProvider.PATH_ALL_VEHICLES);
-		Cursor cursor = getActivity().getContentResolver().query(uri,
-				MainActivity.vehicleColumnsProjection, null, null, null);
-		ArrayList<VehicleItem> items = EvaluationsProvider
-				.cursorToVehicleItemArray(cursor);
-		for (VehicleItem i : items) {
-			mVehicles.put(i.getCategory(), i.getIcon());
-		}
-		// Get "none" bitmap and add it
+		// Get "none" bitmap and add to the vehicles map
 		Bitmap noneBmp = BitmapFactory.decodeResource(getResources(),
 				R.drawable.none_00b0b0);
 		mVehicles.put("none", noneBmp);
@@ -169,6 +158,17 @@ public class RecognizerFragment extends Fragment {
 			ArrayAdapter<VehicleInstance> adapter = (ArrayAdapter<VehicleInstance>) historyView
 					.getAdapter();
 			adapter.notifyDataSetChanged();
+			
+			// Get vehicles and icons from the db
+			Uri uri = Uri.parse(EvaluationsProvider.VEHICLES_URI
+					+ EvaluationsProvider.PATH_ALL_VEHICLES);
+			Cursor cursor = getActivity().getContentResolver().query(uri,
+					MainActivity.vehicleColumnsProjection, null, null, null);
+			ArrayList<VehicleItem> items = EvaluationsProvider
+					.cursorToVehicleItemArray(cursor);
+			for (VehicleItem i : items) {
+				mVehicles.put(i.getCategory(), i.getIcon());
+			}
 
 			// Use startService to keep it running independently
 			Intent intent = new Intent(mActivity, RecognizerService.class);
